@@ -1,0 +1,32 @@
+S{3:n}
+2021-01-01{}
+2021-01-02{}
+2021-01-03{}
+2021-01-04{}
+2021-01-05{}
+2021-01-06{}
+2021-01-07{}
+2021-01-08{}
+2021-01-09{}
+2021-01-10{}
+2021-01-11{}
+2021-01-12{}
+2021-01-13{}
+2021-01-14{}
+2021-01-15{}
+2021-01-16{}
+2021-01-17{}
+2021-01-18{}
+2021-01-19{}
+2021-01-20{}
+2021-01-21{}
+2021-01-22{Brush teeth:t345 HW:tClean up my mess:t330 repository 2021-01-24:t}
+2021-01-23{305 quiz:t345 hw:tPray:tRun:tPushups:f330 repository 2021-01-24:tFix bank.txt 2021-01-24:tGrade kais thing 2021-01-24:tLog Friday hours 2021-01-24:t}
+2021-01-24{Organize code better:fPushups:fClean up my mess:f330 repository:tRespond to Kevin:tWalk Leo:t305 A1:fSet up direct deposit :fFix bank.txt:tGrade kais thing:tLog Friday hours:t}
+2021-01-25{305 A1:tSet up direct deposit :fPray:tPhysics HW:tAbs:fPushups:fGet mail:tGrade post lab 1 2021-01-26:f}
+2021-01-26{330 OH at 1:tArms:tAdd next and back buttons:fResolve bank issues:fSet up direct deposit :fPray:tGrade post lab 1 2021-01-26:t}
+2021-01-27{330 lectures 3-6:fClean:f}
+2021-01-28{305 OH at 2:t}
+2021-01-29{Arms:t}
+2021-01-30{}
+2021-01-31{Set up direct deposit :fGrade post lab 1 2021-01-26:fLog hours (3:f}

@@ -1,0 +1,29 @@
+S{7:n}
+2021-02-01{}
+2021-02-02{}
+2021-02-03{}
+2021-02-04{}
+2021-02-05{}
+2021-02-06{}
+2021-02-07{}
+2021-02-08{Do the dishes:tAbs:tPushups:tFold laundry:tFix lifelp:tRun:t}
+2021-02-09{Play soccer:tWatch a 330 lecture:tPhysics learning commentary:tArms:tAssignment 1 Q1 (305):fGet moms drawing ready for color:tRespond to Shari :t}
+2021-02-10{Run:tAbs:fPushups:fLaundry:tMojdeh meeting:tGrade postlab:tNo YouTube:fResume:t}
+2021-02-11{Career fair:tFold laundry:tDo dishes:tClean bathroom sink:tVacuum :tFollow up email:fRespond to Cassie:tAsk Kevin if he has ever heard god:fArms:tPhysics HW:t}
+2021-02-12{330 quiz:fLog hours:tRun:fAbs:tPushups:fWork on 330 group project:tChop up da meat:t}
+2021-02-13{Play soccer:fWrite thing for Kevin:fRenew passport:fArms:fAttendance and prelab3:fText worker:f}
+2021-02-14{}
+2021-02-15{Write a rhyme:fFishing 330 group project:f330 quiz:tAbs:fPushups:f}
+2021-02-16{Arms:fAdd prev and next:fFinish 330 project:t330 lecture:tKevin letter:t305 A3:t}
+2021-02-17{Play soccer:tRun:tAbs:fPushups:fPhysics hw:t330 lecture:fGrade postlab 4:tDo the dishes:tFinish milk:f}
+2021-02-18{Dimitri meeting 3:t345 meeting 6:tSexual assault prevention:t305 participation quiz :tArms:fFinish 330 project:t}
+2021-02-19{Email Qiang an update email :fRun :tAbs:tPushups:fPhysics HW:tEmail yudong:tCut toe nails:fClean:t}
+2021-02-20{Renew passport:tGet face wash:tStart studying for 345:t330 lecture:tPray:tArms:tQ1 of 305 quiz:tWork on 345 project:t}
+2021-02-21{Work on 345 project:tResolve bank issues:f305 quiz:tPhysics HW:t}
+2021-02-22{345 midterm:tLaundry:tRun:tAbs:tPushups:fWork on 345 project:t}
+2021-02-23{Physicist biography :fArms:tDownload Xcode on Mac :fSetup GitHub:tPractice Wednesday reading:fCut nails:fPray:tEmail about override:fLog hours:f}
+2021-02-24{}
+2021-02-25{}
+2021-02-26{}
+2021-02-27{}
+2021-02-28{}
