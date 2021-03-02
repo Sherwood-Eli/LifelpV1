@@ -1,121 +1,10 @@
 import ui
 import datetime
 import time
-
-
-def changeMonth(date, incr):
-	date = str(date)
-	year = int(date[0:4])
-	day = int(date[8:10])
-	if date[5] == "0":
-		num = int(date[6])
-	else:
-		num = int(date[5:7])
-	num = num + incr
-	if num > 9:
-		if num > 12:
-			num = num - 12
-			year+=1
-		else:
-			num = str(num)		
-	elif num < 1:
-		num = 12 + num
-		year-=1
+import lifelpDataBase
 			
-	date = datetime.date(year, num, day)
-	return date
-		
 
-def loadData(fileName):
-	fileName += "-data.txt"
-	fileName = "lifelp/" + fileName
-	with open(fileName,"r") as file:
-		data = {}
-		for line in file:
-			x = 0
-			key = ""
-			task = ""
-			while line[x] != "{":
-				key += line[x]
-				x+=1
-			data[key] = {}
-			x+=1
-			while line[x] != "}":
-				task = ""
-				while line[x] != ":":
-					task += line[x]
-					x+=1
-				x+=1
-				if line[x] == "t":
-					data[key][task] = True
-				elif line[x] == "f":
-					data[key][task] = False
-				else:
-					data[key] = task
-				x+=1
-	return data
-	
-def getData(today):
-	output = {}
-	outputKeys = {}
-	temp = changeMonth(today, -1)
-	temp = str(temp)
-	temp = temp[0:7]
-	output[temp] = loadData(temp)
-	outputKeys[temp] = list((output[temp]).keys())
-	temp = str(today)
-	temp = temp[0:7]
-	output[temp] = loadData(temp)
-	outputKeys[temp] = list((output[temp]).keys())
-	temp = changeMonth(today, 1)
-	temp = str(temp)
-	temp = temp[0:7]
-	output[temp] = loadData(temp)
-	outputKeys[temp] = list((output[temp]).keys())
-	return output, outputKeys
-	
-def loadPresets():
-	with open("lifelp/presets.txt", "r") as file:
-		presets = {}
-		for line in file:
-			if len(line) > 3:
-				x = 0
-				key = ""
-				while line[x] != ":":
-					key+=line[x]
-					x+=1
-				x+=1
-				value = []
-				while line[x] != "}":
-					temp = ""
-					while line[x] != ",":
-						temp+=line[x]
-						x+=1
-					value.append(temp)
-					x+=1
-				presets[key] = value
-	return presets
-
-def saveBank():
-	global bank
-	bankKeys = list(bank.keys())
-	with open("lifelp/bank.txt", "w") as file:
-		file.write(bankKeys[0])
-		file.write(":,}")
-		x = 1
-		while x < len(bankKeys):
-			temp = bankKeys[x]
-			file.write("\n")
-			file.write(temp)
-			file.write(":")
-			for y in bank[temp]:
-				file.write(y)
-				file.write(",")
-			file.write("}")
-			x+=1
-				
-
-def checkIncomplete(today):
+def checkForIncompleteTasks(today):
 	global bank
 	global data
 	global bankKeys
@@ -137,134 +26,39 @@ def checkIncomplete(today):
 				bankKeys.append(x)
 				bank[x] = [yesterday]
 	bankKeys[0] = str(today)
-	saveBank()
-	
-def readyBank():
-	global bank
-	for x in bank:
-		if x[0] == "&":
-			temp = x[1:len(x)]
-			bank[temp] = bank[x]
-			del bank[x]
-	
+	lifelpDataBase.saveBank()
 
-def loadBank():
-	bankKeys = []
-	bank = {}
-	with open("lifelp/bank.txt") as file:
-		for line in file:
-			task = ""
-			x=0
-			while (line[x] != ":"):
-				task += line[x]
-				x+=1
-			bankKeys.append(task)
-			bank[task] = []
-			x+=1
-			while (line[x] != "}"):
-				num = ""
-				while (line[x] != ","):
-					num += line[x]
-					x+=1
-				bank[task].append(num)
-				x+=1
-	return bank, bankKeys
-				
-	
-
-def saveData(month):
-	global data
-	fileName = "lifelp/" + month + "-data.txt"
-	with open(fileName, "w") as file:
-		for x in data[month]:
-			file.write(x)
-			temp = data[month][x]
-			file.write("{")
-			for y in temp:
-				file.write(y)
-				file.write(":")
-				if type(temp) == dict:
-					if temp[y] == True:
-						file.write("t")
-					elif temp[y] == False:
-						file.write("f")
-				else:
-					file.write("n")
-			file.write("}\n")
-		
-
-def saveTask(textfield):
-	global tTask
-	global numTasks
-	global data
-	global current
-	view2.remove_subview(tTask)
-	if textfield.text != "":
-		month = current.title[0:7]
-		temp = data[month][current.title]
-		temp[textfield.text] = False
-		saveData(month)
-		h = -5 + (44*numTasks)
-		button = ui.Button(title = str(numTasks))
-		button.center = (25.5, h)
-		button.background_color = "red"
-		button.flex = "LRTB"
-		button.action = taskButton
-		label = ui.Label()
-		label.text = textfield.text
-		label.center = (125, h)
-		label.flex = "w"
-		view2.add_subview(button)
-		view2.add_subview(label)
-		textfield.text = ""
-		numTasks+=1
-		current.background_color = "red"
-
-	
-
-def changeButtons(sender):
+#goes to previous or next week depending on which button calls this function
+def changeWeek(sender):
 	global buttons
 	global sundayIndex
 	global data
 	global dataKeys
-	global view1
+	global viewMain
 	today = str(datetime.date.today())
 	key = today[0:7]
 	if sender.title == "prev":
 		sundayIndex-=7
 	else:
 		sundayIndex+=7
-		
+	#if month change is mid week
+	if sundayIndex > todayIndex:
+		curMonth = loadedMonths[0]
+		Mindex = 0
+		sundayIndex = len(dataKeys[curMonth]) - (8 - sundayIndex)
 	for x in range(0, len(buttons)):
+		#if month ends mid week
+		if (sundayIndex + x == len(dataKeys[curMonth])):
+			Mindex += 1
+			curMonth = loadedMonths[Mindex]
+			#sundayIndex - 7 to use next month sunday index
+			sundayIndex = int(data[curMonth]["S"]) - 7
 		button = buttons[x]
 		button.title = dataKeys[key][sundayIndex + x]
 		setDateButtonColor(button, data[key][button.title])
 
-def getMonth(today):
-	return(today[5:7])
-
-#junk func
-def findSunday(today):
-	global dataKeys
-	global dataIndex
-	temp = today[0:7]
-	tempKeys = dataKeys[temp]
-	for x in range(0,len(tempKeys)):
-		if today == tempKeys[x]:
-			dataIndex = x
-			temp = x - 3
-			for y in range(0,7):
-				if ((temp - y)%7) == 0:
-					return (x-y)
-
-def findTodayIndex(today):
-	month = today[0:7]
-	todayIndex = 0
-	for x in data[month]:
-		if x == today:
-			return todayIndex
-		todayIndex+=1
-		
+#Changes the color of a task button to the color that it is not.
+#will also change other instances if this task to true/false. (might want to move this to only happen at the beggining of next day potentially)	
 def taskButton(sender):
 	global current
 	global data
@@ -297,7 +91,7 @@ def taskButton(sender):
 				data[tMonth][x][task] = False
 	setDateButtonColor(current, temp)
 	for x in tMonths:
-		saveData(x)
+		lifelpDataBase.saveData(x, data)
 
 def setDateButtonColor(button, tasks):
 	button.background_color = "white"
@@ -312,10 +106,29 @@ def setDateButtonColor(button, tasks):
 	
 def addTask(sender):
 	global tTask
-	view2.add_subview(tTask)
+	viewTasks.add_subview(tTask)
+
+def addPreset(sender):
+	viewP.add_subview(tPreset)
 	
-def dateButton(sender):
-	global view2
+def createBankView(sender):
+	global bank
+	global viewB
+	viewB = ui.View()
+	viewB.background_color = "f0fff5"
+	h = 15
+	for x in bank:
+		if "&" not in x:
+			button = ui.Button(font = ('<system-bold>',20), title = x)
+			button.flex = "LRTB"
+			button.center = (50, h)
+			h+=5
+			button.action = fromBank
+		viewB.add_subview(button)
+	viewB.present("fullscreen")
+	
+def createTaskView(sender):
+	global viewTasks
 	global data
 	global current
 	global numTasks
@@ -325,8 +138,8 @@ def dateButton(sender):
 		current = sender
 		curTitle = current.title
 		numTasks = 1
-		view2 = ui.View()
-		view2.background_color = "#f0fff5"
+		viewTasks = ui.View()
+		viewTasks.background_color = "#f0fff5"
 		hb = 13
 		hl = -5
 		temp = data[month][curTitle]
@@ -345,33 +158,46 @@ def dateButton(sender):
 			label.text = x
 			label.center = (125, hl)
 			label.flex = "w"
-			view2.add_subview(button)
-			view2.add_subview(label)
+			viewTasks.add_subview(button)
+			viewTasks.add_subview(label)
 			numTasks+=1
-		createAddTaskButton(view2, "task")
-		view2.present("fullscreen")
+		createAddTaskButton(viewTasks, "task")
+		viewTasks.present("fullscreen")
 	else:
 		day = sender.title
 		data[day][fromBankInfo] = False
 		fromBankInfo = ""
-		saveData(month)
-		saveBank()
+		lifelpDataBase.saveData(month, data)
+		lifelpDataBase.saveBank()
 
-def decrMonth():
-	if today[5] == "0":
-		month = int(today[6])
-		if month == 1:
-			month = "12"
-		else:
-			month-=1
-			month = "0" + str(month)
-	else:
-		month = int(today[5:7])
-		if month == 10:
-			month = "09"
-		else:
-			month-=1
-			month = str(month)
+#Action of the textfield inside viewTask. Creates a new task button and task label
+#and places ut in the task View
+def createTask(textfield):
+	global tTask
+	global numTasks
+	global data
+	global current
+	viewTasks.remove_subview(tTask)
+	if textfield.text != "":
+		month = current.title[0:7]
+		temp = data[month][current.title]
+		temp[textfield.text] = False
+		lifelpDataBase.saveData(month, data)
+		h = -5 + (44*numTasks)
+		button = ui.Button(title = str(numTasks))
+		button.center = (25.5, h)
+		button.background_color = "red"
+		button.flex = "LRTB"
+		button.action = taskButton
+		label = ui.Label()
+		label.text = textfield.text
+		label.center = (125, h)
+		label.flex = "w"
+		viewTasks.add_subview(button)
+		viewTasks.add_subview(label)
+		textfield.text = ""
+		numTasks+=1
+		current.background_color = "red"
 	
 def fromBank(sender):
 	global bank
@@ -382,14 +208,11 @@ def fromBank(sender):
 	temp = "&" + fromBankInfo
 	bank[temp] = bank[fromBankInfo]
 	del bank[fromBankInfo]
-
-def addPreset(sender):
-	viewP.add_subview(tPreset)
 	
 
 def savePreset(sender):
 	print(tPreset.text)
-	view2.remove_subview(tPreset)
+	viewTasks.remove_subview(tPreset)
 	if sender.text != "":
 		h = -5 + (44*len(presets))
 		button = ui.Button(title = str(numTasks))
@@ -400,8 +223,8 @@ def savePreset(sender):
 		label.text = textfield.text
 		label.center = (125, h)
 		label.flex = "w"
-		view2.add_subview(button)
-		view2.add_subview(label)
+		viewTasks.add_subview(button)
+		viewTasks.add_subview(label)
 		textfield.text = ""
 		numTasks+=1
 		current.background_color = "red"
@@ -409,7 +232,6 @@ def savePreset(sender):
 def createAddTaskButton(view, action):
 	button = ui.Button(font = ('<system-bold>', 70), title = "0")
 	button.center = (200, 725)
-	#button.flex = "LRTB"
 	if action == "task":
 		button.action = addTask
 	elif action == "preset":
@@ -417,7 +239,36 @@ def createAddTaskButton(view, action):
 	view.add_subview(button)
 	button.title = "+"
 	return button
-	
+
+def createPresetButton(view):
+	preset = ui.Button(font = ('<system-bold>',20), title = "presets")
+	preset.flex = "LRTB"
+	preset.center = (60, 77)
+	preset.background_color = "white"
+	preset.action = presetView
+	view.add_subview(preset)
+
+def createBankButton(view)
+	bankBut = ui.Button(font = ('<system-bold>',20), title = "bank")
+	bankBut.flex = "LRTB"
+	bankBut.center = (35, 77)
+	bankBut.background_color = "white"
+	bankBut.action = createBankView
+	view.add_subview(bankBut)
+
+def createPrevButton(view):
+	prev = ui.Button(font = ('<system-bold>',15), title = "prev")
+	prev.background_color = "white"
+	prev.action = changeWeek
+	prev.center = (30, 460)
+	view.add_subview(prev)
+
+def createNextButton(view):
+	next = ui.Button(font = ('<system-bold>',15), title = "next")
+	next.background_color = "white"
+	next.action = changeWeek
+	next.center = (100, 460)
+	view.add_subview(next)
 	
 def presetView(sender):
 	global presets
@@ -434,116 +285,71 @@ def presetView(sender):
 		
 		
 
-def bankView(self):
-	global bank
-	global viewB
-	viewB = ui.View()
-	viewB.background_color = "f0fff5"
-	h = 15
-	for x in bank:
-		if "&" not in x:
-			button = ui.Button(font = ('<system-bold>',20), title = x)
-			button.flex = "LRTB"
-			button.center = (50, h)
-			h+=5
-			button.action = fromBank
-		viewB.add_subview(button)
-	viewB.present("fullscreen")
-		
+	
 
-def loadButtons(today):
-	global view1
+def createDateButtons(today):
+	global viewMain
 	global dataKeys
 	global buttons
 	global todayIndex
 	global sundayIndex
+
 	loadedMonths = list(dataKeys.keys())
 	curMonth = loadedMonths[1]
 	Mindex = 1
 	daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"]
 	sundayIndex = int(data[curMonth]["S"])
+
+	#if month transition is mid week
 	if sundayIndex > todayIndex:
 		curMonth = loadedMonths[0]
 		Mindex = 0
 		sundayIndex = len(dataKeys[curMonth]) - (8 - sundayIndex)
+	#else find correct sunday index
 	else:
 		while todayIndex > (sundayIndex + 6):
 			sundayIndex+=7
+
 	for x in range(0,7):
+		#if month ends mid week
 		if (sundayIndex + x == len(dataKeys[curMonth])):
-			#when index is out of range it uses the same offset from sundayindex and finds new sunday index and month
 			Mindex += 1
 			curMonth = loadedMonths[Mindex]
-			#sundayIndex - 7 to use last weeks sunday index
+			#sundayIndex - 7 to use next month sunday index
 			sundayIndex = int(data[curMonth]["S"]) - 7
 			
-			
+		#adds the date button with temporary label to set size
 		button = ui.Button(title = "0000000000")
 		button.center = (80, (70 + (55*x)))
 		button.background_color = "white"
-		
-		
-		button.action = dateButton
+		button.action = createTaskView
 		buttons.append(button)
-		m = ui.Label(text = daysOfWeek[x], font = ('<system-bold>', 20))
-		m.center = (60,  (70 + (55*x)))
-		view1.add_subview(m)
+		#highlights current day
 		if (sundayIndex + x) == (todayIndex):
 			button.border_color = "#2ce56d"
 			button.border_width = 5
-		view1.add_subview(button)
-		#change after being added to view so it can have a set space
-		button.title = dataKeys[curMonth][sundayIndex + x]
-		
+		#figuring out what color to make the dateButton
 		temp = data[curMonth][button.title]
-		if len(temp) > 0:
-			button.background_color = "#2ce56d"
-			for y in temp:
-				if temp[y] == False:
-					button.background_color = "red"
+		setDateButtonColor(button, temp)
+		viewMain.add_subview(button)
+
+		#change title of dateButton after being added to view so it can have a set space
+		button.title = dataKeys[curMonth][sundayIndex + x]
+
+		#adds dayLabel next to dateButton
+		dayLabel = ui.Label(text = daysOfWeek[x], font = ('<system-bold>', 20))
+		dayLabel.center = (60,  (70 + (55*x)))
+		viewMain.add_subview(dayLabel)
 		
-	preset = ui.Button(font = ('<system-bold>',20), title = "presets")
-	preset.flex = "LRTB"
-	preset.center = (60, 77)
-	preset.background_color = "white"
-	preset.action = presetView
-	view1.add_subview(preset)
-	bankBut = ui.Button(font = ('<system-bold>',20), title = "bank")
-	bankBut.flex = "LRTB"
-	bankBut.center = (35, 77)
-	bankBut.background_color = "white"
-	bankBut.action = bankView
-	view1.add_subview(bankBut)
+	createPresetButton(viewMain)
+	createBankButton(viewMain)
+	createPrevButton(viewMain)
+	createNextButton(viewMain)
 	
-	prev = ui.Button(font = ('<system-bold>',15), title = "prev")
-	prev.background_color = "white"
-	prev.action = changeButtons
-	prev.center = (30, 460)
-	view1.add_subview(prev)
+	viewMain.present("fullscreen")
+
 	
-	next = ui.Button(font = ('<system-bold>',15), title = "next")
-	next.background_color = "white"
-	next.action = changeButtons
-	next.center = (100, 460)
-	view1.add_subview(next)
-	
-	view1.present("fullscreen")
-	
-def createData(day):
-	day = changeMonth(day, 1)
-	fileName = str(day)
-	dayS = fileName
-	month = fileName[5:7]
-	fileName = fileName[0:7]
-	fileName = fileName + "-data.txt"
-	fileName = "lifelp/" + fileName
-	with open(fileName, "w") as file:
-		while dayS[5:7] == month:
-			file.write(dayS)
-			file.write("{}")
-			file.write("\n")
-			day = day + datetime.timedelta(days=1)
-			dayS= str(day)
+
 	
 def setup():
 	global bankKeys
@@ -555,35 +361,40 @@ def setup():
 	
 	
 	if todayS != bankKeys[0]:
-		#readyBank()
+		#lifelpAUX.readyBank(bank)
 		if todayS[8:10] == "01":
-			createData(today)
-		#checkIncomplete(today)
-	data, dataKeys = getData(today)
-	todayIndex = findTodayIndex(todayS)
+			lifelpDataBase.createData(today)
+		#checkForIncompleteTasks(today)
+	data, dataKeys = lifelpDataBase.getData(today)
+	todayIndex = lifelpAUX.findTodayIndex(todayS)
 	
 	
 	
-	loadButtons(todayS)
+	createDateButtons(todayS)
 
-view1 = ui.View()
-view1.background_color = "#f0fff5"
-view2 = ui.View()
-view2.background_color = "#f0fff5"
+
+
+viewMain = ui.View()
+viewMain.background_color = "#f0fff5"
+viewTasks = ui.View()
+viewTasks.background_color = "#f0fff5"
 viewB = ui.View()
+viewB.background_color = "#f0fff5"
 viewP = ui.View()
 viewP.background_color = "f0fff5"
+
 buttons = []
+
 numTasks = 0
 dataIndex = 0
 current = ""
 data = {}
 dataKeys = {}
 tTask = ui.TextField(frame = (20, 400, 375, 50))
-tTask.action = saveTask
+tTask.action = createTask
 tPreset = ui.TextField(frame = (20, 400, 375, 50))
 tPreset.action = savePreset
-bank, bankKeys = loadBank()
+bank, bankKeys = lifelpDataBase.loadBank()
 presets = loadPresets()
 fromBankInfo = ""
 sundayIndex = ""
@@ -595,6 +406,7 @@ setup()
 #THOUGHTS:
 	#i can probably make a function that creates the buttons with the nice presets that take parameters for most of this button making
 
+	#I can put all of my global variables in a function and declare them all there if i want
 
 
   
