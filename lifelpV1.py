@@ -1,4 +1,3 @@
-
 import ui
 import datetime
 import time
@@ -235,6 +234,7 @@ def changeButtons(sender):
 		sundayIndex-=7
 	else:
 		sundayIndex+=7
+		
 	for x in range(0, len(buttons)):
 		button = buttons[x]
 		button.title = dataKeys[key][sundayIndex + x]
@@ -408,8 +408,8 @@ def savePreset(sender):
 	
 def createAddTaskButton(view, action):
 	button = ui.Button(font = ('<system-bold>', 70), title = "0")
-	button.center = (50,375)
-	button.flex = "wh"
+	button.center = (200, 725)
+	#button.flex = "LRTB"
 	if action == "task":
 		button.action = addTask
 	elif action == "preset":
@@ -451,7 +451,7 @@ def bankView(self):
 	viewB.present("fullscreen")
 		
 
-def loadButtons(today,month):
+def loadButtons(today):
 	global view1
 	global dataKeys
 	global buttons
@@ -465,15 +465,19 @@ def loadButtons(today,month):
 	if sundayIndex > todayIndex:
 		curMonth = loadedMonths[0]
 		Mindex = 0
-		sundayIndex = len(dataKeys[curMonth]) - (sundayIndex-8)
+		sundayIndex = len(dataKeys[curMonth]) - (8 - sundayIndex)
 	else:
 		while todayIndex > (sundayIndex + 6):
 			sundayIndex+=7
 	for x in range(0,7):
-		if (sundayIndex + 1 == len(dataKeys[curMonth])):
-			sundayIndex = 1
+		if (sundayIndex + x == len(dataKeys[curMonth])):
+			#when index is out of range it uses the same offset from sundayindex and finds new sunday index and month
 			Mindex += 1
 			curMonth = loadedMonths[Mindex]
+			#sundayIndex - 7 to use last weeks sunday index
+			sundayIndex = int(data[curMonth]["S"]) - 7
+			
+			
 		button = ui.Button(title = "0000000000")
 		button.center = (80, (70 + (55*x)))
 		button.background_color = "white"
@@ -490,6 +494,7 @@ def loadButtons(today,month):
 		view1.add_subview(button)
 		#change after being added to view so it can have a set space
 		button.title = dataKeys[curMonth][sundayIndex + x]
+		
 		temp = data[curMonth][button.title]
 		if len(temp) > 0:
 			button.background_color = "#2ce56d"
@@ -545,21 +550,21 @@ def setup():
 	global data
 	global dataKeys
 	global todayIndex
-	global month
 	today = datetime.date.today()
 	todayS = str(today)
-	data, dataKeys = getData(today)
-	todayIndex = findTodayIndex(todayS)
-	month = getMonth(todayS)
+	
+	
 	if todayS != bankKeys[0]:
 		#readyBank()
 		if todayS[8:10] == "01":
 			createData(today)
 		#checkIncomplete(today)
+	data, dataKeys = getData(today)
+	todayIndex = findTodayIndex(todayS)
 	
 	
 	
-	loadButtons(todayS, month)
+	loadButtons(todayS)
 
 view1 = ui.View()
 view1.background_color = "#f0fff5"
