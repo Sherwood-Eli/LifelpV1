@@ -1,5 +1,17 @@
 import datetime
 
+def isNewWeek(sunday, lastLog):
+	if date1GreaterThan2(sunday, lastLog):
+		return True
+	return False
+
+def date1GreaterThan2(date1, date2):
+	if (int(date1[0:4]) > int(date2[0:4])) or (turnToInt(date1[5:7]) > turnToInt(date2[5:7])) or (turnToInt(date1[5:7]) >= turnToInt(date2[5:7])) and (turnToInt(date1[8:10]) > turnToInt(date2[8:10])):
+		return True
+	return False
+
+
+
 def changeMonth(date, incr):
 	date = str(date)
 	year = int(date[0:4])
