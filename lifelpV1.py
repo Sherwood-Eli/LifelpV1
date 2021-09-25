@@ -2,253 +2,1150 @@ import ui
 import datetime
 import time
 import lifelpDataBase
+import lifelpAUX
 			
 
-def checkForIncompleteTasks(today):
-	global bank
-	global data
-	global bankKeys
-	yesterday = str(today - datetime.timedelta(days=1))
-	month = yesterday[5:7]
-	temp = data[month][yesterday]
-	for x in temp:
-		if temp[x]:
-			if x in bank:
-				for y in bank[x]:
-					newKey = x + " " + yesterday
-					data[y][newKey] = data[y][x]
-					del data[month][y][x]
-				del bank[x]
-		else:
-			if x in bank:
-				bank[x].append(yesterday)
-			else:
-				bankKeys.append(x)
-				bank[x] = [yesterday]
-	bankKeys[0] = str(today)
-	lifelpDataBase.saveBank()
+
+	
+	
 
 #goes to previous or next week depending on which button calls this function
 def changeWeek(sender):
-	global buttons
+	global todayS
+	global mainView
+	global dateButtons
 	global sundayIndex
 	global data
-	global dataKeys
-	global viewMain
-	today = str(datetime.date.today())
-	key = today[0:7]
+	global curMonth
 	if sender.title == "prev":
 		sundayIndex-=7
+		if sundayIndex < 0:
+			curMonth = lifelpAUX.decrFileKey(curMonth)
+			try:
+				sundayIndex = len(data[curMonth].days) + sundayIndex
+			except KeyError:
+				data[curMonth] = lifelpDataBase.loadData(curMonth)
+				sundayIndex = len(data[curMonth].days) + sundayIndex
 	else:
 		sundayIndex+=7
-	#if month change is mid week
-	if sundayIndex > todayIndex:
-		curMonth = loadedMonths[0]
-		Mindex = 0
-		sundayIndex = len(dataKeys[curMonth]) - (8 - sundayIndex)
-	for x in range(0, len(buttons)):
+	for x in range(0, len(dateButtons)):
+		oldLabel = dateButtons[x].title
+		data[oldLabel[0:7]].days[oldLabel].buttonIndex = -1
 		#if month ends mid week
-		if (sundayIndex + x == len(dataKeys[curMonth])):
-			Mindex += 1
-			curMonth = loadedMonths[Mindex]
-			#sundayIndex - 7 to use next month sunday index
-			sundayIndex = int(data[curMonth]["S"]) - 7
-		button = buttons[x]
-		button.title = dataKeys[key][sundayIndex + x]
-		setDateButtonColor(button, data[key][button.title])
-
+		if (sundayIndex + x >= len(data[curMonth].days)):
+			curMonth = lifelpAUX.incrFileKey(curMonth)
+			# to use next month sunday index
+			try:
+				sundayIndex = int(data[curMonth].sundayIndex) - 7
+			except KeyError:
+				data[curMonth] = lifelpDataBase.loadData(curMonth)
+				sundayIndex = int(data[curMonth].sundayIndex) - 7
+			if sundayIndex == -7:
+				sundayIndex = 0
+		button = dateButtons[x]
+		button.title = data[curMonth].dataKeys[sundayIndex + x]
+		day = data[curMonth].days[button.title]
+		day.buttonIndex = x
+		setDateButtonColor(button, day)
+		if button.title == todayS:
+			button.border_width = 5
+		else:
+			button.border_width = 0
+			
+#called when a tasks completeness is updated
 #Changes the color of a task button to the color that it is not.
 #will also change other instances if this task to true/false. (might want to move this to only happen at the beggining of next day potentially)	
 def taskButton(sender):
-	global current
+	global myDayView
 	global data
 	global bank
-	month = current.title[0:7]
-	temp = data[month][current.title]
-	keys = list(temp.keys())
-	index = int(sender.title) - 1
-	task = keys[index]
-	bankKey = "&" + task
-	tMonths = []
-	tMonths.append(month)
-	if (sender.background_color == (1.0, 0.0, 0.0, 1.0)):
-		sender.background_color = "#2ce56d"
-		temp[task] = True
-		if bankKey in bank:
-			for x in bank[bankKey]:
-				tMonth = x[0:7]
-				if tMonth not in tMonths:
-					tMonths.append(tMonth)
-				data[tMonth][x][task] = True
+	month = myDayView.date[0:7]
+	day = data[month].days[myDayView.date]
+	tasks = day.tasks
+	taskKeys = list(tasks.keys())
+	if sender.title == "X":
+		indexToDelete = int(sender.name) - 1
+		maxIndex = len(myDayView.taskButtons) - 1
+		#can only delete things from present and future days so this is coo
+		if tasks[taskKeys[indexToDelete]].type == "b": 
+			bank.bank[taskKeys[indexToDelete]].outCount -= 1
+			lifelpDataBase.saveBank(bank)
+		del tasks[taskKeys[indexToDelete]]
+		del taskKeys[indexToDelete]
+		myDayView.view.remove_subview(myDayView.taskButtons[indexToDelete])
+		myDayView.view.remove_subview(myDayView.taskLabels[indexToDelete])
+		del myDayView.taskButtons[indexToDelete]
+		del myDayView.taskLabels[indexToDelete]
+		for x in range(indexToDelete, maxIndex):
+			myDayView.taskLabels[x].center.y -= 40
+			myDayView.taskButtons[x].center.y -= 40
+		if maxIndex == 0:
+			dayEditMode(myDayView.editButton)
+		lifelpDataBase.saveData(month, data)
+		
 	else:
-		sender.background_color = "red"
-		temp[task] = False
-		if bankKey in bank:
-			for x in bank[bankKey]:
-				tMonth = x[0:7]
-				if tMonth not in tMonths:
-					tMonths.append(tMonth)
-				data[tMonth][x][task] = False
-	setDateButtonColor(current, temp)
-	for x in tMonths:
-		lifelpDataBase.saveData(x, data)
+		index = int(sender.title) - 1
+		task = taskKeys[index]
+		tMonths = []
+		tMonths.append(month)
+		if (sender.background_color == (1.0, 0.0, 0.0, 1.0)):
+			sender.background_color = "#2ce56d"
+			tasks[task].complete = True
+			if tasks[task].type == "b":
+				for date in bank.bank[task].dates:
+					tMonth = date[0:7]
+					pastDay = data[tMonth].days[date]
+					if tMonth not in tMonths:
+						tMonths.append(tMonth)
+					pastDay.tasks[task].complete = True
+					#if it is -1 then date is not displayed
+					if pastDay.buttonIndex != -1:
+						
+						setDateButtonColor(dateButtons[pastDay.buttonIndex], pastDay)
+				bank.bank[task].complete = True
+				lifelpDataBase.saveBank(bank)
+		else:
+			sender.background_color = "red"
+			tasks[task].complete = False
+			if tasks[task].type == "b":
+				for date in bank.bank[task].dates:
+					tMonth = date[0:7]
+					pastDay = data[tMonth].days[date]
+					if tMonth not in tMonths:
+						tMonths.append(tMonth)
+					pastDay.tasks[task].complete = False
+					if pastDay.buttonIndex != -1:
+						setDateButtonColor(dateButtons[pastDay.buttonIndex], pastDay)
+				bank.bank[task].complete = False
+				lifelpDataBase.saveBank(bank)
+		setDateButtonColor(myDayView.dateButton, day)
+		for x in tMonths:
+			lifelpDataBase.saveData(x, data)
 
-def setDateButtonColor(button, tasks):
+def setDateButtonColor(button, day):
 	button.background_color = "white"
-	if len(tasks):
+	if len(day.tasks):
 		good = True
-		for x in tasks:
-			good = good and tasks[x]
+		for task in day.tasks:
+			good = good and day.tasks[task].complete
 		if good:
 			button.background_color = "2ce56d"
 		else:
 			button.background_color = "red"
+	else:
+		if day.buttonIndex == 0:
+			button.background_color = "2ce56d"
 	
 def addTask(sender):
 	global tTask
-	viewTasks.add_subview(tTask)
-
-def addPreset(sender):
-	viewP.add_subview(tPreset)
+	myDayView.view.add_subview(tTask)
 	
 def createBankView(sender):
 	global bank
-	global viewB
-	viewB = ui.View()
-	viewB.background_color = "f0fff5"
-	h = 15
-	for x in bank:
-		if "&" not in x:
-			button = ui.Button(font = ('<system-bold>',20), title = x)
+	bank.view = ui.View()
+	bank.view.background_color = "f0fff5"
+	h = 20
+	for task in bank.bank:
+		if bank.bank[task].outCount == 0 and bank.bank[task].complete == False:
+			button = ui.Button(font = ('<system-bold>',20), title = task)
 			button.flex = "LRTB"
 			button.center = (50, h)
 			h+=5
-			button.action = fromBank
-		viewB.add_subview(button)
-	viewB.present("fullscreen")
+			button.action = bank.fromBank
+			bank.view.add_subview(button)
+	bank.view.present("fullscreen")
 	
-def createTaskView(sender):
-	global viewTasks
-	global data
-	global current
-	global numTasks
-	global fromBankInfo
-	month = sender.title[0:7]
-	if fromBankInfo == "":
-		current = sender
-		curTitle = current.title
-		numTasks = 1
-		viewTasks = ui.View()
-		viewTasks.background_color = "#f0fff5"
-		hb = 13
-		hl = -5
-		temp = data[month][curTitle]
-		for x in temp:
-			hb += (4)
-			hl += (44)
-			button = ui.Button(title = str(numTasks))
-			button.center = (17, hb)
-			if temp[x]:
-				button.background_color = "#2ce56d"
-			else:
-				button.background_color = "red"
-			button.flex = "LRTB"
-			button.action = taskButton
-			label = ui.Label()
-			label.text = x
-			label.center = (125, hl)
-			label.flex = "w"
-			viewTasks.add_subview(button)
-			viewTasks.add_subview(label)
-			numTasks+=1
-		createAddTaskButton(viewTasks, "task")
-		viewTasks.present("fullscreen")
-	else:
-		day = sender.title
-		data[day][fromBankInfo] = False
-		fromBankInfo = ""
-		lifelpDataBase.saveData(month, data)
-		lifelpDataBase.saveBank()
 
 #Action of the textfield inside viewTask. Creates a new task button and task label
 #and places ut in the task View
 def createTask(textfield):
 	global tTask
-	global numTasks
 	global data
-	global current
-	viewTasks.remove_subview(tTask)
+	global myDayView
+	global editMode
+	myDayView.view.remove_subview(tTask)
 	if textfield.text != "":
-		month = current.title[0:7]
-		temp = data[month][current.title]
-		temp[textfield.text] = False
+		month = myDayView.date[0:7]
+		day = data[month].days[myDayView.date]
+		numTasks = len(day.tasks) + 1
+		day.tasks[textfield.text] = lifelpDataBase.Task()
 		lifelpDataBase.saveData(month, data)
-		h = -5 + (44*numTasks)
+		h = 30 + (40*(numTasks-1))
 		button = ui.Button(title = str(numTasks))
-		button.center = (25.5, h)
-		button.background_color = "red"
-		button.flex = "LRTB"
+		myDayView.taskButtons.append(button)
+		button.name = str(numTasks)
+		button.flex = "w"
+		button.center = (35, h)
+		if editMode:
+			button.title = "X"
+			button.background_color = "#ff591e"
+		else:
+			button.background_color = "red"
 		button.action = taskButton
-		label = ui.Label()
-		label.text = textfield.text
-		label.center = (125, h)
+		labelText = textfield.text
+		label = ui.Label(text = labelText)
+		myDayView.taskLabels.append(label)
+		label.center = (125, h+40)
 		label.flex = "w"
-		viewTasks.add_subview(button)
-		viewTasks.add_subview(label)
+		label.size_to_fit()
+		myDayView.view.add_subview(button)
+		myDayView.view.add_subview(label)
 		textfield.text = ""
 		numTasks+=1
-		current.background_color = "red"
+		myDayView.dateButton.background_color = "red"
+
+
+
+class Bank:	
+	def __init__(self):
+		global todayS
+		#global data
+		#global dataKeys
+		self.lastLastLog, self.lastLog, self.bank, self.bankKeys = lifelpDataBase.loadBank()
+		self.fromBankInfo = ""
+		self.newDay = False
+		if self.lastLog != todayS:
+			self.checkForIncomplete()
+			self.cleanBank()
+			self.newDay = True
+			self.lastLastLog = self.lastLog
+			self.lastLog = todayS
+			lifelpDataBase.saveBank(self)
 	
-def fromBank(sender):
+	def cleanBank(self):
+		tasksToDelete = []
+		for task in self.bank:
+			if self.bank[task].complete:
+				dayS = self.bank[task].dates[len(self.bank[task].dates) - 1]
+				for date in self.bank[task].dates:
+					newKey = task + " " + dayS
+					newTask = lifelpDataBase.Task()
+					newTask.complete = True
+					data[dayS[0:7]].days[date].tasks[newKey] = newTask
+					del data[date[0:7]].days[date].tasks[task]
+				tasksToDelete.append(task)
+		for task in tasksToDelete:
+			del self.bank[task]
+			self.bankKeys.remove(task)
+	
+	def checkForIncomplete(self):
+		global today
+		global todayS
+		global data
+		day = today
+		dayS = str(day)
+		while(dayS != self.lastLog):
+			day = day - datetime.timedelta(days=1)
+			dayS = str(day)
+			dataKey = dayS[0:7]
+			try:
+				curDay = data[dataKey].days[dayS].tasks
+			except KeyError:
+				data[dataKey] = lifelpDataBase.loadData(dataKey)
+				curDay = data[dataKey].days[dayS].tasks
+			for task in curDay:
+				if curDay[task].complete == False:
+					if curDay[task].type == "r":
+						self.bankKeys.append(task)
+						#if there is another instance of this task somewhere in the future then outCount is inacurate
+						curDay[task].type = "b"
+						self.bank[task] = lifelpDataBase.BankTask(0, [dayS], False)
+					elif curDay[task].type == "b":
+						self.bank[task].dates.append(dayS)
+						self.bank[task].outCount-=1
+			lifelpDataBase.saveData(dataKey, data)
+	
+	def fromBank(self, sender):
+		global bank
+		global mainView
+		bank.fromBankInfo = sender.title
+		mainView.view.add_subview(mainView.trashButton)
+		bank.view.close()
+
+class Presets:
+	def __init__(self):
+		self.presets, self.presetKeys = lifelpDataBase.loadPresets()
+		self.numPresets = len(self.presetKeys)
+		self.viewP = None
+		self.textField = ui.TextField(frame = (20, 400, 375, 50))
+		self.textField.action = self.savePreset
+	
+	def addPreset(self, sender):
+		self.viewP.add_subview(self.textField)
+	
+	def showPresetView(self, sender):
+		global editMode
+		editMode = False
+		if self.viewP == None:
+			self.viewP = ui.View(background_color = "f0fff5")
+			self.autoLabel = ui.Label(text = "Auto", font = ('<system-bold>',20))
+			self.autoLabel.center = (275, 70)
+			self.freqLabel = ui.Label(text = "Frequency", font = ('<system-bold>',20))
+			self.freqLabel.center = (350, 70)
+			presetLabel = ui.Label(text = "Task", font = ('<system-bold>',20))
+			presetLabel.center = (130, 70)
+			self.viewP.add_subview(self.autoLabel)
+			self.viewP.add_subview(self.freqLabel)
+			self.viewP.add_subview(presetLabel)
+			createAddTaskButton(self.viewP, "preset")
+			x = 0
+			for preset in self.presets:
+				h = 100 + (40*x)
+				
+				labelButton = ui.Button(title = preset, font = ('<system>',20))
+				labelButton.action = self.assignPreset
+				labelButton.center = (100, h)
+				self.viewP.add_subview(labelButton)
+				self.presets[preset].labelButton = labelButton
+				
+				autoButton = ui.Button(title = "00")
+				autoButton.center = (245, h)
+				autoButton.background_color = "red"
+				autoButton.action = self.setAuto
+				autoButton.name = str(x)
+				
+				if self.presets[preset].auto:
+					autoButton.title = "yes"
+					autoButton.background_color = "2ce56d"
+					
+					frequencyButton = ui.Button(title = "00000000000")
+					frequencyButton.center = (350, h)
+					frequencyButton.background_color = "white"
+					frequencyButton.action = self.setFrequency
+					frequencyButton.name = str(x)
+					self.viewP.add_subview(frequencyButton)
+			
+					frequencyButton.title = self.presets[preset].frequency
+					
+					self.presets[preset].frequencyButton = frequencyButton
+				else:
+					autoButton.title = "no"
+				
+				
+				self.viewP.add_subview(autoButton)
+				self.presets[preset].autoButton = autoButton
+				
+				x+=1
+			createEditButton(self.viewP, "p")
+				
+				
+		self.viewP.present("fullscreen")
+		
+	def presetEditMode(self, sender):
+		global editMode
+		if sender.title == "edit":
+			sender.title = "done"
+			editMode = True
+			self.viewP.remove_subview(self.autoLabel)
+			self.viewP.remove_subview(self.freqLabel)
+			for preset in self.presets:
+				if self.presets[preset].auto:
+					self.viewP.remove_subview(self.presets[preset].frequencyButton)
+				self.presets[preset].autoButton.title = "X"
+				self.presets[preset].autoButton.background_color = 	"#ff591e"
+		elif sender.title == "done":
+			sender.title = "edit"
+			editMode = False
+			self.viewP.add_subview(self.autoLabel)
+			self.viewP.add_subview(self.freqLabel)
+			for preset in self.presets:
+				if self.presets[preset].auto:
+					self.viewP.add_subview(self.presets[preset].frequencyButton)
+					self.presets[preset].autoButton.background_color = "2ce56d"
+					self.presets[preset].autoButton.title = "yes"
+				else:
+					self.presets[preset].autoButton.background_color = "red"
+					self.presets[preset].autoButton.title = "no"
+				
+		
+	def showFrequencyButton(self, buttonName, task):
+		button = ui.Button(title = "00000000000")
+		button.center = (350, 100 + 40*int(buttonName))
+		button.background_color = "white"
+		button.action = self.setFrequency
+		button.name = buttonName
+		self.viewP.add_subview(button)
+		button.title = "every day"
+		self.presets[task].frequencyButton = button
+		self.presets[task].frequency = button.title
+		lifelpDataBase.savePresets(self.presets)
+		self.placePreset(task, "every day")
+	
+	def hideFrequencyButton(self, task):
+		button = self.presets[task].frequencyButton
+		self.removePreset(task)
+		self.viewP.remove_subview(button)
+	
+	def setAuto(self, sender):
+		if sender.title == "no":
+			sender.title = "yes"
+			sender.background_color = "2ce56d"
+			task = self.presetKeys[int(sender.name)]
+			self.presets[task].auto = True
+			self.showFrequencyButton(sender.name, task)
+		elif sender.title == "yes":
+			sender.title = "no"
+			sender.background_color = "red"
+			task = self.presetKeys[int(sender.name)]
+			self.presets[task].auto = False
+			self.hideFrequencyButton(task)
+		elif sender.title == "X":
+			indexToDelete = int(sender.name)
+			presetToDelete = self.presetKeys[indexToDelete]
+			
+			self.viewP.remove_subview(self.presets[presetToDelete].labelButton)
+			self.viewP.remove_subview(self.presets[presetToDelete].autoButton)
+			if self.presets[presetToDelete].auto:
+				self.viewP.remove_subview(self.presets[presetToDelete].frequencyButton)
+			
+			for x in range(len(self.presetKeys) - 1, indexToDelete, -1):
+				h = 100 + (40*(x-1))
+				preset = self.presets[self.presetKeys[x]]
+				
+				preset.labelButton.name = str(x-1)
+				preset.labelButton.center = (100, h)
+				preset.autoButton.name = str(x-1)
+				preset.autoButton.center = (245, h)
+				if preset.auto:
+					preset.frequencyButton.name = str(x-1)
+					preset.frequencyButton.center = (350, h)
+			
+			del self.presets[presetToDelete]
+			del self.presetKeys[indexToDelete]
+			self.removePreset(presetToDelete)
+			self.numPresets-=1
+			
+			
+		lifelpDataBase.savePresets(self.presets)
+		
+	def setFrequency(self, sender):
+		self.removePreset(self.presetKeys[int(sender.name)])
+		if sender.title == "every day":
+			sender.title = "every A day"
+		elif sender.title == "every A day":
+			sender.title = "every B day"
+		elif sender.title == "every B day":
+			sender.title = "every day"
+		self.presets[self.presetKeys[int(sender.name)]].frequency = sender.title
+		lifelpDataBase.savePresets(self.presets)
+		self.placePreset(self.presetKeys[int(sender.name)], sender.title)
+			
+	def assignPreset(self, sender):
+		if self.presets[sender.title].auto == False:
+			self.viewP.close()
+	
+	def savePreset(self, sender):
+		newPreset = sender.text
+		sender.text = ""
+		self.viewP.remove_subview(sender)
+		if newPreset in self.presets:
+			print("there is already a preset with this name")
+			
+		elif newPreset != "":
+			h = 100 + (40*self.numPresets)
+			
+			autoButton = ui.Button(title = "no")
+			autoButton.center = (245, h)
+			autoButton.background_color = "red"
+			autoButton.action = self.setAuto
+			autoButton.name = str(self.numPresets)
+			if editMode:
+				autoButton.title = "X"
+				autoButton.background_color = "#ff591e"
+			
+			self.viewP.add_subview(autoButton)
+			
+			presetButton = ui.Button(title = newPreset, font = ('<system>',20))
+			presetButton.action = self.assignPreset
+			presetButton.center = (100, h)
+			self.viewP.add_subview(presetButton)
+			
+			
+			
+			self.numPresets+=1
+			
+			self.presets[newPreset] = lifelpDataBase.PresetTask(False, "")
+			self.presets[newPreset].labelButton = presetButton
+			self.presets[newPreset].autoButton = autoButton
+			self.presetKeys.append(newPreset)
+			lifelpDataBase.savePresets(self.presets)
+			
+	def placePreset(self, preset, frequency):
+		global data
+		global dateButtons
+		todayS = str(datetime.date.today())
+		
+		#for when this is called when not in current week, have there be a global varibld that tells this to be called again when current week is restored.
+		start = False
+		if frequency == "every day":
+			for x in range(0,7):
+				date = dateButtons[x].title
+				if date == todayS:
+					start = True
+				if start:
+					day = data[date[0:7]].days[date]
+					day.tasks[preset] = lifelpDataBase.Task()
+					day.tasks[preset].complete = False
+					day.tasks[preset].type = "p"
+					setDateButtonColor(dateButtons[x], day)
+		if frequency == "every A day":
+			for x in range(0,7):
+				date = dateButtons[x].title
+				if date == todayS:
+					start = True
+				if start and x%2 == 1:
+					day = data[date[0:7]].days[date]
+					day.tasks[preset] = lifelpDataBase.Task()
+					day.tasks[preset].complete = False
+					day.tasks[preset].type = "p"
+					setDateButtonColor(dateButtons[x], day)
+		if frequency == "every B day":
+			for x in range(0,7):
+				date = dateButtons[x].title
+				if date == todayS:
+					start = True
+				if start and x != 0 and x%2 == 0:
+					day = data[date[0:7]].days[date]
+					day.tasks[preset] = lifelpDataBase.Task()
+					day.tasks[preset].complete = False
+					day.tasks[preset].type = "p"
+					setDateButtonColor(dateButtons[x], day)
+		lifelpDataBase.saveData(todayS[0:7], data)
+		if date[5:7] != todayS[5:7]:
+			nextMonth = str(lifelpAUX.changeMonth(todayS, 1))
+			lifelpDataBase.saveData(nextMonth[0:7], data)
+	
+	def removePreset(self, preset):
+		global data
+		global dateButtons
+		todayS = str(datetime.date.today())
+		
+		start = False
+		for x in range(0,7):
+			date = dateButtons[x].title
+			if date == todayS:
+				start = True
+			if start:
+				day = data[date[0:7]].days[date]
+				if preset in day.tasks:
+					del day.tasks[preset]
+					setDateButtonColor(dateButtons[x], day)
+		lifelpDataBase.saveData(todayS[0:7], data)
+		if date[5:7] != todayS[5:7]:
+			nextMonth = str(lifelpAUX.changeMonth(todayS, 1))
+			lifelpDataBase.saveData(nextMonth[0:7], data)
+
+
+def activateBoolButton(sender):
+	if sender.title == "no":
+		sender.title = "yes"
+		sender.background_color = "2ce56d"
+	elif sender.title == "yes":
+		sender.title = "no"
+		sender.background_color = "red"
+
+class SettingOption:
+	def __init__(self, name, type, choices):
+		self.name = name
+		self.type = type
+		self.choices = choices
+		self.choiceIndex = 0
+		self.helperButton = None
+		
+	def addHelperButton(self, title):
+		if title == "view:":
+			button = ui.Button(title = "XXXX")
+			button.center = (325, 80 + 45)
+			button.action = moreViews.chooseViewLink
+			button.background_color = "white"
+			button.name = "select"
+			
+			moreViews.curView.optionsView.add_subview(button)
+			button.title = "none"
+			self.helperButton = button
+		
+		
+	
+	def cycleChoice(self, sender):
+		self.choiceIndex+=1
+		if self.choiceIndex%len(self.choices) == 0:
+			self.choiceIndex = 0
+		sender.title = self.choices[self.choiceIndex]
+		if self.helperButton != None:
+			moreViews.curView.optionsView.remove_subview(self.helperButton)
+			self.helperButton = None
+		self.addHelperButton(sender.title)
+
+class MoreViews:
+	def __init__(self, type):
+		self.view = ui.View()
+		self.view.background_color = "f0fff5"	
+		self.addTaskButton = createAddTaskButton(self, "customView")
+		self.editMode = False
+		self.selectMode = False
+		if type == "r":
+			self.editButton = createEditButton(self, "mr")
+			self.selectView = MoreViews("s")
+			
+		elif type == "s":
+			self.editButton = createEditButton(self, "ms")
+			
+		self.moreViewButtons = []
+		self.x = 0
+		self.y = 0
+		
+		self.chosenOptions = []
+		self.availableOptions = []
+		self.optionsView = None
+		
+		#option 1
+		self.availableOptions.append(SettingOption("name", "s", []))
+		
+		#option 2
+		self.availableOptions.append(SettingOption("completable", "b", []))
+		
+		
+		
+		self.optionsView = None
+		
+		self.allViews, self.numSlots, self.availableSlots = lifelpDataBase.loadMoreViewsAll()
+		self.homeViews = lifelpDataBase.loadMoreViewsHome()
+		
+		self.curView = None
+		self.viewPath = []
+	
+		for viewKey in self.homeViews:
+			button = ui.Button(title = "00000000000")
+			button.center = (55 + 150 * self.x, 50 + 40 * self.y)
+			button.background_color = "white"
+			button.action = self.openCustomView
+			self.view.add_subview(button)
+			button.title = self.homeViews[viewKey]
+			button.name = viewKey
+			self.moreViewButtons.append(button)
+			self.x+=1
+			if self.x%3 == 0:
+				self.x = 0
+				self.y+=1
+		
+	def showView(self, sender):
+		if self.editMode:
+			self.moreEditMode(self.editButton)
+		self.view.present("fullscreen")
+		
+	def chooseViewLink(self, sender):
+		self.curView.buttonNeedingLink = sender
+		self.selectView.view.present("fullscreen")
+			
+	def openCustomView(self, sender):
+		if self.curView == None:
+			self.viewPath.append(None)
+		else:
+			self.viewPath.append(self.curView.serialNum)
+		self.curView = CustomView(sender.name)
+		self.curView.button = sender
+		if self.editMode:
+			self.openCustomViewOptions("edit")
+		elif self.selectMode:
+			self.curView.linkView(sender.name)
+		else:
+			self.curView.view.present("fullscreen")
+		
+		
+		
+	def openCustomViewOptions(self, sender):
+		self.chosenOptions = []
+		
+		view = ui.View()
+		self.optionsView = view
+		view.background_color = "f0fff5"
+		
+		if sender == "edit":
+			x = 0
+			for option in self.availableOptions:
+				label = ui.Label(text = option.name, center = (100, 75 + 45*int(x)))
+				
+				view.add_subview(label)
+				#needs boolean value
+				if option.type == "b":
+					button = ui.Button(title = "XXX")
+					button.center = (275, 80 + 45*int(x))
+					button.action = activateBoolButton
+					button.name = "b" + str(x)
+					view.add_subview(button)
+					if self.curView.options[x] == True:
+						button.title = "yes"
+						button.background_color = "2ce56d"
+					elif self.curView.options[x] == False:
+						button.title = "no"
+						button.background_color = "red"
+					self.chosenOptions.append(button)
+				#needs string value
+				elif option.type == "s":
+					textField = ui.TextField(frame = (200, 60 + 45*int(x), 150, 35))
+					textField.name = "s" + str(x)
+					textField.text = self.curView.options[x]
+					view.add_subview(textField)
+					self.chosenOptions.append(textField)
+				x+=1
+				
+			createCreateButton(view, "save", "v")
+		else:
+			x = 0
+			for option in self.availableOptions:
+				label = ui.Label(text = option.name, center = (100, 75 + 45*int(x)))
+				
+				view.add_subview(label)
+				#needs boolean value
+				if option.type == "b":
+					button = ui.Button(title = "XXX")
+					button.center = (275, 80 + 45*int(x))
+					button.action = activateBoolButton
+					button.name = "b" + str(x)
+					view.add_subview(button)
+					button.title = "no"
+					button.background_color = "red"
+					self.chosenOptions.append(button)
+				#needs string value
+				elif option.type == "s":
+					textField = ui.TextField(frame = (200, 60 + 45*int(x), 150, 35))
+					textField.name = "s" + str(x)
+					view.add_subview(textField)
+					self.chosenOptions.append(textField)
+				x+=1
+				
+			createCreateButton(view, "create", "v")
+		view.present("fullscreen")
+		
+			
+	def setCustomViewSettings(self, sender):
+		for x in self.chosenOptions:
+			index = int(x.name[1])
+			type = x.name[0]
+			if type == "b":
+				if x.title == "yes":
+					self.chosenOptions[index] = True
+				elif x.title == "no":
+					self.chosenOptions[index] = False
+			elif type == "s":
+				self.chosenOptions[index] = self.chosenOptions[index].text
+		if sender.title == "create":
+			if len(self.availableSlots) == 0:
+				self.numSlots+=1
+				serialNum = str(self.numSlots)
+			else:
+				serialNum = self.availableSlots.pop(0)
+			
+			lifelpDataBase.createCustomViewData(serialNum, self.chosenOptions)
+				
+			self.allViews[serialNum] = self.chosenOptions[0]
+			self.homeViews[serialNum] = self.chosenOptions[0]
+			
+			lifelpDataBase.saveMoreViewsAll(self.allViews, self.numSlots, self.availableSlots)
+			lifelpDataBase.saveMoreViewsHome(self.homeViews)
+			
+			#then i gotta add the view to the physical home view
+			
+			button = ui.Button(title = "00000000000")
+			button.center = (55 + 150 * self.x, 50 + 40 * self.y)
+			button.background_color = "white"
+			button.action = self.openCustomView
+			self.view.add_subview(button)
+			button.title = self.homeViews[serialNum]
+			button.name = serialNum
+			self.moreViewButtons.append(button)
+			self.x+=1
+			if self.x%3 == 0:
+				self.x = 0
+				self.y+=1
+				
+		else:
+			self.curView.options = self.chosenOptions
+			name = self.curView.options[0]
+			if self.curView.button.title != name:
+				self.curView.button.title = name
+				self.allViews[self.curView.serialNum] = name
+				self.homeViews[self.curView.serialNum] = name
+				
+				lifelpDataBase.saveMoreViewsAll(self.allViews, self.numSlots, self.availableSlots)
+				lifelpDataBase.saveMoreViewsHome(self.homeViews)
+			lifelpDataBase.saveCustomView(self.curView.serialNum, self.curView.options, self.curView.tasks)
+		
+			#then i guess i should just re-present the physicsl view
+		self.optionsView.close()
+	
+	def moreEditMode(self, sender):
+		if self.editMode == False:
+			self.editMode = True
+			for x in self.moreViewButtons:
+				x.background_color = "#ff591e"
+			sender.title = "done"
+		elif self.editMode:
+			self.editMode = False
+			for x in self.moreViewButtons:
+				x.background_color = "white"
+			sender.title = "edit"
+				
+	def moreSelectMode(self, sender):
+		if self.selectMode == False:
+			self.selectMode = True
+			for x in self.moreViewButtons:
+				x.background_color = "#2ce56d"
+			sender.title = "seek"
+		elif self.selectMode:
+			self.selectMode = False
+			for x in self.moreViewButtons:
+				x.background_color = "white"
+			sender.title = "select"
+
+class CustomView:
+	def __init__(self, serialNum):
+		
+		self.view = ui.View()
+		self.view.background_color = "f0fff5"	
+		
+		self.addTaskButton = createAddTaskButton(self, "customTask")
+		self.editButton = createEditButton(self, "c")
+		
+		self.tasks, self.options = lifelpDataBase.loadCustomView(serialNum)
+		self.serialNum = serialNum
+		self.button = None
+		
+		self.chosenTaskOptions = []
+		self.availableTaskOptions = []
+		self.buttonNeedingLink = None
+		
+		#taskOption 1
+		self.availableTaskOptions.append(SettingOption("name", "s", None))
+		
+		#TaskOption 2
+		self.availableTaskOptions.append(SettingOption("action", "c", ["view:", "note", "distribute"]))
+		
+		
+		#viewOption 1
+		
+		#viewOption 2
+		self.completable = False
+		
+		if self.options[1] == True:
+			self.completable = True
+		
+		numTasks = 1
+		for task in self.tasks:
+			h = (30 + 40*x)
+			if self.completable or self.tasks[task]:
+				button = ui.Button(title = str(numTasks))
+				self.taskButtons.append(button)
+				button.name = str(numTasks)
+				button.center = (35, h)
+				if self.tasks[task].complete:
+					button.background_color = "#2ce56d"
+				else:
+					button.background_color = "red"
+			label = ui.Label()
+			self.taskLabels.append(label)
+			label.text = task
+			label.center = (125, h)
+			label.flex = "w"
+			self.view.add_subview(button)
+			self.view.add_subview(label)
+			numTasks+=1
+			x+=1
+	
+	def openCustomTaskOptions(self, sender):
+		self.chosenOptions = []
+		
+		view = ui.View()
+		self.optionsView = view
+		view.background_color = "f0fff5"
+		
+		if sender == "edit":
+			x = 0
+			for option in self.availableTaskOptions:
+				label = ui.Label(text = option.name, center = (100, 75 + 45*int(x)))
+				
+				view.add_subview(label)
+				#needs boolean value
+				if option.type == "b":
+					button = ui.Button(title = "XXX")
+					button.center = (275, 80 + 45*int(x))
+					button.action = activateBoolButton
+					button.name = "b" + str(x)
+					view.add_subview(button)
+					if self.curView.options[x] == True:
+						button.title = "yes"
+						button.background_color = "2ce56d"
+					elif self.curView.options[x] == False:
+						button.title = "no"
+						button.background_color = "red"
+					self.chosenOptions.append(button)
+				#needs string value
+				elif option.type == "s":
+					textField = ui.TextField(frame = (200, 60 + 45*int(x), 150, 35))
+					textField.name = "s" + str(x)
+					textField.text = self.curView.options[x]
+					view.add_subview(textField)
+					self.chosenOptions.append(textField)
+				elif option.type == "c":
+					button = ui.Button(title = "XXXXXXXXX")
+					button.center = (250, 80 + 45*int(x))
+					button.action = option.cycleChoice
+					button.name = "b" + str(x)
+					button.background_color = "white"
+					view.add_subview(button)
+					button.title = curView.options[x]
+				x+=1
+				
+			createCreateButton(view, "save", "t")
+		else:
+			x = 0
+			for option in self.availableTaskOptions:
+				label = ui.Label(text = option.name, center = (100, 75 + 45*int(x)))
+				
+				view.add_subview(label)
+				#needs boolean value
+				if option.type == "b":
+					button = ui.Button(title = "XXX")
+					button.center = (275, 80 + 45*int(x))
+					button.action = activateBoolButton
+					button.name = "b" + str(x)
+					view.add_subview(button)
+					button.title = "no"
+					button.background_color = "red"
+					self.chosenOptions.append(button)
+				#needs string value
+				elif option.type == "s":
+					textField = ui.TextField(frame = (200, 60 + 45*int(x), 150, 35))
+					textField.name = "s" + str(x)
+					view.add_subview(textField)
+					self.chosenOptions.append(textField)
+				elif option.type == "c":
+					button = ui.Button(title = "XXXXXXXXX")
+					button.center = (250, 80 + 45*int(x))
+					button.action = option.cycleChoice
+					button.name = "b" + str(x)
+					button.background_color = "white"
+					view.add_subview(button)
+					button.title = option.choices[0]
+					option.addHelperButton(option.choices[0])
+				x+=1
+				
+			createCreateButton(view, "create", "t")
+		view.present("fullscreen")
+		
+	def setCustomTaskSettings(self, sender):
+		for x in self.chosenOptions:
+			index = int(x.name[1])
+			type = x.name[0]
+			if type == "b":
+				if x.title == "yes":
+					self.chosenOptions[index] = True
+				elif x.title == "no":
+					self.chosenOptions[index] = False
+			elif type == "s":
+				self.chosenOptions[index] = self.chosenOptions[index].text
+			elif type == "c":
+				self.chosenOptions[index] = self.chosenOptions[index].title + self.availableTaskOptions[index].helperButton.title
+			
+			
+			
+			
+			button = ui.Button(title = "00000000000")
+			button.center = (55 + 150 * self.x, 50 + 40 * self.y)
+			button.background_color = "white"
+			button.action = self.openCustomView
+			self.view.add_subview(button)
+			button.title = self.homeViews[serialNum]
+			button.name = serialNum
+			self.moreViewButtons.append(button)
+			self.x+=1
+			if self.x%3 == 0:
+				self.x = 0
+				self.y+=1
+				
+		else:
+			self.curView.options = self.chosenOptions
+			name = self.curView.options[0]
+			if self.curView.button.title != name:
+				self.curView.button.title = name
+				self.allViews[self.curView.serialNum] = name
+				self.homeViews[self.curView.serialNum] = name
+				
+				lifelpDataBase.saveMoreViewsAll(self.allViews, self.numSlots, self.availableSlots)
+				lifelpDataBase.saveMoreViewsHome(self.homeViews)
+			lifelpDataBase.saveCustomView(self.curView.serialNum, self.curView.options, self.curView.tasks)
+		
+			#then i guess i should just re-present the physicsl view
+		self.optionsView.close()	
+	
+	def customEditMode(self, sender):
+		print("yo")
+		
+	def linkView(self, serialNum):
+		moreViews.curView.buttonNeedingLink.title = serialNum
+		
+			
+
+class CustomTask:
+	def __init__(self, options):
+		
+		
+		#option 1
+		self.name = option[0]
+		
+		#option 2
+		if self.options[1][0:4] == "view":
+			self.attachedView = self.options[1][4:len(self.options[1])]
+			button.action = self.openAttachedView
+
+
+
+class MyMainView:
+	def __init__(self):
+		self.view = ui.View()
+		self.view.background_color = "f0fff5"	
+		
+		
+		self.trashButton = createTrashButton(self.view)
+					
+class MyDayView:
+	def __init__(self):	
+		self.view = ui.View()
+		self.taskButtons = []
+		self.taskLabels = []
+		self.date = ""
+		self.dateButton = 0
+		self.editButton = 0
+		
+def createTaskView(sender):
+	global myDayView
+	global editMode
+	global data
 	global bank
-	global fromBankInfo
-	global viewB
-	fromBankInfo = sender.title
-	viewB.close()
-	temp = "&" + fromBankInfo
-	bank[temp] = bank[fromBankInfo]
-	del bank[fromBankInfo]
+	global todayS
+	myDayView.taskButtons = []
+	myDayView.taskLabels = []
+	month = sender.title[0:7]
+	if bank.fromBankInfo == "":
+		curDate = sender.title
+		myDayView.date = curDate
+		myDayView.dateButton = sender
+		numTasks = 1
+		myDayView.view = ui.View()
+		myDayView.view.background_color = "#f0fff5"
+		x = 0
+		tasks = data[month].days[curDate].tasks
+		for task in tasks:
+			h = (30 + 40*x)
+			button = ui.Button(title = str(numTasks))
+			myDayView.taskButtons.append(button)
+			button.name = str(numTasks)
+			button.center = (35, h)
+			if tasks[task].complete:
+				button.background_color = "#2ce56d"
+			else:
+				button.background_color = "red"
+			if date1GreaterThan2(bank.lastLastLog, curDate) == False:
+				button.action = taskButton
+			label = ui.Label()
+			myDayView.taskLabels.append(label)
+			label.text = task
+			label.center = (125, h)
+			label.flex = "w"
+			myDayView.view.add_subview(button)
+			myDayView.view.add_subview(label)
+			numTasks+=1
+			x+=1
+		if date1GreaterThan2(todayS, curDate) == False:
+			createAddTaskButton(myDayView.view, "task")
+			myDayView.editButton = createEditButton(myDayView.view, "d")
+			editMode = False
+		myDayView.view.present("fullscreen")
+	else:
+		date = sender.title
+		data[date[0:7]].days[date].tasks[bank.fromBankInfo] = lifelpDataBase.Task()
+		data[date[0:7]].days[date].tasks[bank.fromBankInfo].type = "b"
+		bank.bank[bank.fromBankInfo].outCount+=1
+		bank.fromBankInfo = ""
+		mainView.view.remove_subview(mainView.trashButton)
+		setDateButtonColor(sender, data[date[0:7]].days[date])
+		lifelpDataBase.saveData(month, data)
+		lifelpDataBase.saveBank(bank)
 	
 
-def savePreset(sender):
-	print(tPreset.text)
-	viewTasks.remove_subview(tPreset)
-	if sender.text != "":
-		h = -5 + (44*len(presets))
-		button = ui.Button(title = str(numTasks))
-		button.center = (25.5, h)
-		button.background_color = "red"
-		button.action = taskButton
-		label = ui.Label()
-		label.text = textfield.text
-		label.center = (125, h)
-		label.flex = "w"
-		viewTasks.add_subview(button)
-		viewTasks.add_subview(label)
-		textfield.text = ""
-		numTasks+=1
-		current.background_color = "red"
 	
+
 def createAddTaskButton(view, action):
 	button = ui.Button(font = ('<system-bold>', 70), title = "0")
 	button.center = (200, 725)
 	if action == "task":
 		button.action = addTask
+		view.add_subview(button)
 	elif action == "preset":
-		button.action = addPreset
-	view.add_subview(button)
+		button.action = presetWindow.addPreset
+		view.add_subview(button)
+	elif action == "customView":
+		button.action = view.openCustomViewOptions
+		view.view.add_subview(button)
+	elif action == "customTask":
+		button.action = view.openCustomTaskOptions
+		view.view.add_subview(button)
+	
 	button.title = "+"
 	return button
+	
+def createEditButton(view, type):
+	button = ui.Button(title = "XXXXXX")
+	button.center = (315, 700)
+	button.title = "edit"
+	
+	if type == "p":
+		global presetWindow
+		button.action = presetWindow.presetEditMode
+		view.add_subview(button)
+	elif type == "d":
+		button.action = dayEditMode
+		view.add_subview(button)
+	elif type == "c":
+		button.action = view.customEditMode
+		view.view.add_subview(button)
+	elif type == "mr":
+		button.action = view.moreEditMode
+		view.view.add_subview(button)
+	elif type == "ms":
+		button.title = "select"
+		button.action = view.moreSelectMode
+		view.view.add_subview(button)
+	return button
+
+def createCreateButton(view, title, type):
+	preset = ui.Button(font = ('<system-bold>',30), title = title)
+	preset.flex = "LRTB"
+	preset.center = (50, 70)
+	preset.background_color = "white"
+	if type == "v":
+		preset.action = moreViews.setCustomViewSettings
+	elif type == "t":
+		moreViews.curView.setCustomTaskSettings
+	view.add_subview(preset)
+
+def createMoreViewsButton(view):
+	preset = ui.Button(font = ('<system-bold>',20), title = "more views")
+	preset.flex = "LRTB"
+	preset.center = (50, 77)
+	preset.background_color = "white"
+	preset.action = moreViews.showView
+	view.add_subview(preset)
 
 def createPresetButton(view):
 	preset = ui.Button(font = ('<system-bold>',20), title = "presets")
 	preset.flex = "LRTB"
 	preset.center = (60, 77)
 	preset.background_color = "white"
-	preset.action = presetView
+	preset.action = presetWindow.showPresetView
 	view.add_subview(preset)
 
-def createBankButton(view)
+def createBankButton(view):
 	bankBut = ui.Button(font = ('<system-bold>',20), title = "bank")
 	bankBut.flex = "LRTB"
 	bankBut.center = (35, 77)
@@ -270,134 +1167,219 @@ def createNextButton(view):
 	next.center = (100, 460)
 	view.add_subview(next)
 	
-def presetView(sender):
-	global presets
-	autoLabel = ui.Label(text = "Auto", font = ('<system-bold>',20))
-	autoLabel.center = (275, 70)
-	freqLabel = ui.Label(text = "Frequency", font = ('<system-bold>',20))
-	freqLabel.center = (350, 70)
-	viewP.add_subview(autoLabel)
-	viewP.add_subview(freqLabel)
-	createAddTaskButton(viewP, "preset")
-	#for x in range(0, len(presets)):
-	viewP.present("fullscreen")
+def createTrashButton(view):
+	button = ui.Button(font = ('<system-bold>', 40), title = "trash")
+	button.action = deleteBankTask
+	button.center = (215, 650)
+	return button
+	
+def deleteBankTask(sender):
+	global bank
+	global mainView
+	del bank.bank[bank.fromBankInfo]
+	bank.bankKeys.remove(bank.fromBankInfo)
+	bank.fromBankInfo = ""
+	mainView.view.remove_subview(mainView.trashButton)
+	lifelpDataBase.saveBank(bank)
+
+
+def dayEditMode(sender):
+	global myDayView
+	global editMode
+	if sender.title == "done":
+		global data
+		tasks = data[myDayView.date[0:7]].days[myDayView.date].tasks
+		editMode = False
+		sender.title = "edit"
+		x = 0
+		for task in tasks:
+			button = myDayView.taskButtons[x]
+			button.title = button.name
+			if tasks[task].complete:
+				button.background_color = "#2ce56d"
+			else:
+				button.background_color = "red"
+			x+=1
+			
+	elif sender.title == "edit":
+		editMode = True
+		sender.title = "done"
+		for button in myDayView.taskButtons:
+			button.title = "X"
+			button.background_color = "#ff591e"
+
+def bankEditMode(sender):
+	global bank
+	global editMode
+	if sender.title == "done":
+		global data
+		editMode = False
+		sender.title = "edit"
+		for button in bank.taskButtons:
+			button.background_color = None
+			
+	elif sender.title == "edit":
+		editMode = True
+		sender.title = "done"
+		for button in bank.taskButtons:
+			button.background_color = "#ff591e"
 		
-		
-		
+
+def turnToInt(string):
+	if string[0] == "0":
+		string = string[1]
+	return int(string)
+
+def date1GreaterThan2(date1, date2):
+	if (int(date1[0:4]) > int(date2[0:4])) or (turnToInt(date1[5:7]) > turnToInt(date2[5:7])) or (turnToInt(date1[5:7]) >= turnToInt(date2[5:7])) and (turnToInt(date1[8:10]) > turnToInt(date2[8:10])):
+		return True
+	return False
+
+def newWeek(sunday, lastLog):
+	if date1GreaterThan2(sunday, lastLog):
+		return True
+	return False
+	
+#def editMode(sender):
+	
 
 	
 
-def createDateButtons(today):
-	global viewMain
-	global dataKeys
-	global buttons
+def createDateButtons(todayS, newDay):
+	global mainView
+	global data
+	global dateButtons
 	global todayIndex
 	global sundayIndex
-
-	loadedMonths = list(dataKeys.keys())
-	curMonth = loadedMonths[1]
-	Mindex = 1
+	global curMonth
+	global presetWindow
+	global loadedMonths
+	global bank
+	
+	curMonth = todayS[0:7]
+	mIndex = 1
 	daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"]
-	sundayIndex = int(data[curMonth]["S"])
+	sundayIndex = int(data[curMonth].sundayIndex)
+	alteredMonths = []
 
 	#if month transition is mid week
 	if sundayIndex > todayIndex:
-		curMonth = loadedMonths[0]
-		Mindex = 0
-		sundayIndex = len(dataKeys[curMonth]) - (8 - sundayIndex)
+		curMonth = lifelpAUX.decrFileKey(curMonth)
+		mIndex = 0
+		sundayIndex = len(data[curMonth].days) - (7 - sundayIndex)
 	#else find correct sunday index
 	else:
 		while todayIndex > (sundayIndex + 6):
 			sundayIndex+=7
+	
+	#at this point lastLog will have been changed to todayS and lastLast log will be the last log but we do not want this to happen more than necesarry so we and it with newDay
+	needApplyPresets = newDay and newWeek(data[curMonth].dataKeys[sundayIndex], bank.lastLastLog)	
+		
+	alteredMonths.append(curMonth)
 
 	for x in range(0,7):
 		#if month ends mid week
-		if (sundayIndex + x == len(dataKeys[curMonth])):
-			Mindex += 1
-			curMonth = loadedMonths[Mindex]
+		if (sundayIndex + x == len(data[curMonth].days)):
+			curMonth = lifelpAUX.incrFileKey(curMonth)
 			#sundayIndex - 7 to use next month sunday index
-			sundayIndex = int(data[curMonth]["S"]) - 7
+			sundayIndex = int(data[curMonth].sundayIndex) - 7
+			alteredMonths.append(curMonth)
 			
 		#adds the date button with temporary label to set size
 		button = ui.Button(title = "0000000000")
 		button.center = (80, (70 + (55*x)))
 		button.background_color = "white"
 		button.action = createTaskView
-		buttons.append(button)
+		dateButtons.append(button)
 		#highlights current day
 		if (sundayIndex + x) == (todayIndex):
 			button.border_color = "#2ce56d"
 			button.border_width = 5
-		#figuring out what color to make the dateButton
-		temp = data[curMonth][button.title]
-		setDateButtonColor(button, temp)
-		viewMain.add_subview(button)
-
+	
 		#change title of dateButton after being added to view so it can have a set space
-		button.title = dataKeys[curMonth][sundayIndex + x]
+		button.title = data[curMonth].dataKeys[sundayIndex + x]
+		data
+		mainView.view.add_subview(button)
+		
+		if needApplyPresets and x > 0:
+			if x % 2 == 0:
+				for preset in presetWindow.presets:
+					if presetWindow.presets[preset].auto and presetWindow.presets[preset].frequency == "every B day":
+						data[curMonth].days[button.title].tasks[preset] = lifelpDataBase.Task()
+						data[curMonth].days[button.title].tasks[preset].type = "p"
+			else:
+				for preset in presetWindow.presets:
+					if presetWindow.presets[preset].auto and presetWindow.presets[preset].frequency == "every A day":
+						data[curMonth].days[button.title].tasks[preset] = lifelpDataBase.Task()
+						data[curMonth].days[button.title].tasks[preset].type = "p"
+			for preset in presetWindow.presets:
+					if presetWindow.presets[preset].auto and presetWindow.presets[preset].frequency == "every day":
+						data[curMonth].days[button.title].tasks[preset] = lifelpDataBase.Task()
+						data[curMonth].days[button.title].tasks[preset].type = "p"
+		
+		#figuring out what color to make the dateButton
+		day = data[curMonth].days[button.title]
+		day.buttonIndex = x
+		setDateButtonColor(button, day)
+
+	
 
 		#adds dayLabel next to dateButton
 		dayLabel = ui.Label(text = daysOfWeek[x], font = ('<system-bold>', 20))
 		dayLabel.center = (60,  (70 + (55*x)))
-		viewMain.add_subview(dayLabel)
+		mainView.view.add_subview(dayLabel)
 		
-	createPresetButton(viewMain)
-	createBankButton(viewMain)
-	createPrevButton(viewMain)
-	createNextButton(viewMain)
+	createPresetButton(mainView.view)
+	createMoreViewsButton(mainView.view)
+	createBankButton(mainView.view)
+	createPrevButton(mainView.view)
+	createNextButton(mainView.view)
 	
-	viewMain.present("fullscreen")
+	mainView.view.present("fullscreen")
+	
+	if needApplyPresets:
+		for x in alteredMonths:
+			lifelpDataBase.saveData(x, data)
+		
 
 	
 
 	
 def setup():
-	global bankKeys
 	global data
-	global dataKeys
 	global todayIndex
+	global bank
+	global today
+	global todayS
 	today = datetime.date.today()
 	todayS = str(today)
+	data = lifelpDataBase.getData(today)
+	todayIndex = lifelpAUX.findTodayIndex(todayS, data)
 	
+	bank = Bank()
 	
-	if todayS != bankKeys[0]:
-		#lifelpAUX.readyBank(bank)
-		if todayS[8:10] == "01":
-			lifelpDataBase.createData(today)
-		#checkForIncompleteTasks(today)
-	data, dataKeys = lifelpDataBase.getData(today)
-	todayIndex = lifelpAUX.findTodayIndex(todayS)
-	
-	
-	
-	createDateButtons(todayS)
+	createDateButtons(todayS, bank.newDay)
+
+mainView = MyMainView()
+
+moreViews = MoreViews("r")
+presetWindow = Presets()
+
+myDayView = MyDayView()
 
 
+dateButtons = []
 
-viewMain = ui.View()
-viewMain.background_color = "#f0fff5"
-viewTasks = ui.View()
-viewTasks.background_color = "#f0fff5"
-viewB = ui.View()
-viewB.background_color = "#f0fff5"
-viewP = ui.View()
-viewP.background_color = "f0fff5"
-
-buttons = []
-
+editMode = False
 numTasks = 0
 dataIndex = 0
-current = ""
 data = {}
 dataKeys = {}
 tTask = ui.TextField(frame = (20, 400, 375, 50))
 tTask.action = createTask
-tPreset = ui.TextField(frame = (20, 400, 375, 50))
-tPreset.action = savePreset
-bank, bankKeys = lifelpDataBase.loadBank()
-presets = loadPresets()
-fromBankInfo = ""
-sundayIndex = ""
+sundayIndex = 0
+curMonth = 0
+mIndex = 1
 
 setup()
 
