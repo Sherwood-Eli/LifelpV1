@@ -1,36 +1,69 @@
+import datetime
+
 def changeMonth(date, incr):
 	date = str(date)
 	year = int(date[0:4])
 	day = int(date[8:10])
 	if date[5] == "0":
-		num = int(date[6])
+		month = int(date[6])
 	else:
-		num = int(date[5:7])
-	num = num + incr
-	if num > 9:
-		if num > 12:
-			num = num - 12
+		month = int(date[5:7])
+	month = month + incr
+	if month > 9:
+		if month > 12:
+			month = month - 12
 			year+=1
-		else:
-			num = str(num)		
-	elif num < 1:
-		num = 12 + num
+	elif month < 1:
+		month = 12 + month
 		year-=1
 			
-	date = datetime.date(year, num, day)
+	date = datetime.date(year, month, 1)
 	return date
 
-def readyBank(bank):
-	for x in bank:
-		if x[0] == "&":
-			temp = x[1:len(x)]
-			bank[temp] = bank[x]
-			del bank[x]
+def getFirstOfMonth(fileKey):
+	year = int(fileKey[0:4])
+	if fileKey[5] == "0":
+		month = int(fileKey[6])
+	else:
+		month = int(fileKey[5:7])
+	return datetime.datetime(year, month, 1)
 
-def findTodayIndex(today):
+def decrFileKey(key):
+	if key[5] == "0":
+		temp = int(key[6])
+	else:
+		temp = int(key[5:7])
+	temp-=1
+	if temp < 1:
+		newYear = int(key[0:4])
+		newYear-=1
+		return str(newYear) + "-" + "12"
+	elif temp < 10:
+		return key[0:5] + "0" + str(temp)
+	else:
+		return key[0:5] + str(temp)
+		
+def incrFileKey(key):
+	if key[5] == "0":
+		temp = int(key[6])
+	else:
+		temp = int(key[5:7])
+	temp+=1
+	if temp > 12:
+		newYear = int(key[0:4])
+		newYear+=1
+		return str(newYear) + "-" + "12"
+	elif temp < 10:
+		return key[0:5] + "0" + str(temp)
+	else:
+		return key[0:5] + str(temp)
+
+def findTodayIndex(today, data):
 	month = today[0:7]
 	todayIndex = 0
-	for x in data[month]:
+	for x in data[month].days:
 		if x == today:
 			return todayIndex
 		todayIndex+=1
+
+	
