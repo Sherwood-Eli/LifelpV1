@@ -1,5 +1,6 @@
 import lifelpAUX
 import datetime
+import dataObjects
 
 def createData(fileKey):
 	global data
@@ -43,22 +44,6 @@ def getData(today):
 	temp = temp[0:7]
 	data[temp] = loadData(temp)
 	return data
-
-class Task:	
-	def __init__(self):
-		self.complete = False
-		self.type = "r"
-
-class MyDay:
-	def __init__(self):
-		self.tasks = {}
-		self.buttonIndex = -1
-
-class MyMonth:
-	def __init__(self):
-		self.days = {}
-		self.sundayIndex = 0
-		self.dataKeys = []
 
 def loadData(fileKey):
 	fileName = fileKey + "-data.txt"
@@ -141,13 +126,6 @@ def savePresets(presets):
 			file.write("}")
 			file.write("\n")
 
-class PresetTask:
-	def __init__(self, frequency):
-		self.frequency = frequency
-		self.labelButton = None
-		self.editButton = None
-		self.frequencyButtons = []
-
 def loadPresets():
 	with open("lifelp/presets.txt", "r") as file:
 		presets = {}
@@ -169,12 +147,6 @@ def loadPresets():
 
 				presets[key] = PresetTask(frequency)
 	return presets, presetKeys
-
-class BankTask:
-	def __init__(self, outCount, dates, complete):
-		self.outCount = outCount
-		self.dates = dates
-		self.complete = complete
 
 def loadBank():
 	bankKeys = []
@@ -254,11 +226,6 @@ def saveBank(bank):
 			else:
 				file.write("f")
 			x+=1
-			
-
-
-
-
 
 			
 def createCustomViewData(serialNum, options):
@@ -347,10 +314,7 @@ def loadCustomView(serialNum):
 						taskOptions.append((int(type), value))
 						
 				tasks.append(taskOptions)
-				taskNum+=1
-			
-							
-							
+				taskNum+=1						
 	return tasks, completed, positions, options
 			
 def saveCustomView(serialNum, options, tasks):
@@ -390,41 +354,6 @@ def saveCustomView(serialNum, options, tasks):
 				file.write("_")
 			file.write("}")
 			file.write("\n")
-			
-def loadMoreViewsHome():
-	views = {}
-	try:
-		with open("lifelp/moreViewsHome.txt", "r") as file:
-			for line in file:
-				x = 0
-				key = ""
-				while line[x] != ":":
-					key+=line[x]
-					x+=1
-				x+=1
-				name = ""
-				while line[x] != "}":
-					name+=line[x]
-					x+=1
-				views[key] = name
-	except IOError:
-		file = open("lifelp/moreViewsHome.txt", "w")
-		file.close()
-	return views
-	
-def saveMoreViewsHome(views):
-	with open("lifelp/moreViewsHome.txt", "w") as file:
-		first = True
-		for viewKey in views:
-			if first:
-				first = False
-			else:
-				file.write("\n")
-			file.write(viewKey)
-			file.write(":")
-			file.write(views[viewKey])
-			file.write("}")
-	
 	
 def loadMoreViewsAll():
 	views = {}
@@ -432,17 +361,22 @@ def loadMoreViewsAll():
 	availableSlots = []
 	try:
 		with open("lifelp/moreViewsAll.txt", "r") as file:
+			#first line stores number of views, vacant slots
 			first = True
 			for line in file:
 				if first:
 					numViews = ""
 					x = 0
+
+					#get num views
 					while line[x] != ":":
 						numViews+=line[x]
 						x+=1
 					numViews = int(numViews)
 					slot = ""
 					x+=1
+
+					#get vacant slots
 					while line[x] != "}":
 						while line[x] != ",":
 							slot+=line[x]
@@ -451,24 +385,31 @@ def loadMoreViewsAll():
 						x+=1
 					first = False
 				else:
+					#every other line holds data for a single view each
 					serialNum = ""
 					x = 0
+
+					#get serial num
 					while line[x] != ":":
 						serialNum+=line[x]
 						x+=1
 					x+=1
-					linkCount = 0
+					link_count = 0
 					linkCountTemp = ""
+
+					#get link count (link count > 0 means display in custom view home)
 					while line[x] != ":":
 						linkCountTemp+=line[x]
 						x+=1
 					x+=1
-					linkCount = int(linkCount)
+					link_count = int(linkCountTemp)
 					name = ""
+
+					#get view name
 					while line[x] != "}":
 						name+=line[x]
 						x+=1
-					views[serialNum] = name
+					views[serialNum] = MetaCustomView(name, link_count)
 				
 	except IOError:
 		file = open("lifelp//moreViewsAll.txt", "w")
@@ -488,13 +429,12 @@ def saveMoreViewsAll(views, numViews, availableSlots):
 		
 		for viewKey in views:
 			print(viewKey)
-			print(views[viewKey])
 			file.write("\n")
 			file.write(viewKey)
 			file.write(":")
-			file.write(views[viewKey].linkCount)
+			file.write(views[viewKey].link_count)
 			file.write(":")
-			file.write(views[viewKey])
+			file.write(views[viewKey].name)
 			file.write("}")
 	
 	

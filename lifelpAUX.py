@@ -87,3 +87,16 @@ def findTodayIndex(today, data):
 		todayIndex+=1
 
 	
+def setDateButtonColor(button, day):
+	button.background_color = "white"
+	if len(day.tasks):
+		good = True
+		for task in day.tasks:
+			good = good and day.tasks[task].complete
+		if good:
+			button.background_color = "2ce56d"
+		else:
+			button.background_color = "red"
+	else:
+		if day.buttonIndex == 0:
+			button.background_color = "2ce56d"
