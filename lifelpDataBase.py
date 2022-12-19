@@ -16,7 +16,7 @@ def createData(fileKey):
 	day = datetime.datetime.strptime(fileKey + "-01",'%Y-%m-%d').date()
 	dayS = str(day)
 	fileName = fileKey + "-data.txt"
-	fileName = "lifelp/" + fileName
+	fileName = "lifelpDB/" + fileName
 	
 	with open(fileName, "w") as file:
 		file.write(str(sundayIndex))
@@ -47,7 +47,7 @@ def getData(today):
 
 def loadData(fileKey):
 	fileName = fileKey + "-data.txt"
-	fileName = "lifelp/" + fileName
+	fileName = "lifelpDB/" + fileName
 	monthData = MyMonth()
 	first = True
 	try:
@@ -89,7 +89,7 @@ def loadData(fileKey):
 	return monthData
 
 def saveData(month, data, encoding='utf-8'):
-	fileName = "lifelp/" + month + "-data.txt"
+	fileName = "lifelpDB/" + month + "-data.txt"
 	monthData = data[month]
 	with open(fileName, "w") as file:
 		file.write(str(monthData.sundayIndex))
@@ -114,7 +114,7 @@ def saveData(month, data, encoding='utf-8'):
 			file.write("}\n")
 
 def savePresets(presets):
-	with open("lifelp/presets.txt", "w", encoding='utf-8') as file:
+	with open("lifelpDB/presets.txt", "w", encoding='utf-8') as file:
 		for preset in presets:
 			for c in preset:
 				try:
@@ -127,7 +127,7 @@ def savePresets(presets):
 			file.write("\n")
 
 def loadPresets():
-	with open("lifelp/presets.txt", "r") as file:
+	with open("lifelpDB/presets.txt", "r") as file:
 		presets = {}
 		presetKeys = []
 		for line in file:
@@ -154,7 +154,7 @@ def loadBank():
 	lastLog = ""
 	lastLastLog = ""
 	first = True
-	with open("lifelp/bank.txt") as file:
+	with open("lifelpDB/bank.txt") as file:
 		for line in file:
 			if first:
 				x = 0
@@ -200,7 +200,7 @@ def loadBank():
 	return lastLastLog, lastLog, bank, bankKeys
 
 def saveBank(bank):
-	with open("lifelp/bank.txt", "w") as file:
+	with open("lifelpDB/bank.txt", "w") as file:
 		bankKeys = bank.bankKeys
 		lastLastLog = bank.lastLastLog
 		lastLog = bank.lastLog
@@ -229,7 +229,7 @@ def saveBank(bank):
 
 			
 def createCustomViewData(serialNum, options):
-	fileName = "lifelp/moreViews/" + serialNum + ".txt"	
+	fileName = "lifelpDB/moreViews/" + serialNum + ".txt"	
 	with open(fileName, "w") as file:
 		for option in options:
 			if option == True:
@@ -243,7 +243,7 @@ def createCustomViewData(serialNum, options):
 		file.write("}")
 		
 def loadCustomView(serialNum):
-	fileName = "lifelp/moreViews/" + serialNum + ".txt"
+	fileName = "lifelpDB/moreViews/" + serialNum + ".txt"
 	#print("opening:", serialNum)	
 	options = []
 	tasks = []
@@ -318,7 +318,7 @@ def loadCustomView(serialNum):
 	return tasks, completed, positions, options
 			
 def saveCustomView(serialNum, options, tasks):
-	fileName = "lifelp/moreViews/" + serialNum + ".txt"	
+	fileName = "lifelpDB/moreViews/" + serialNum + ".txt"	
 	with open(fileName, "w") as file:
 		for option in options:
 			if option == True:
@@ -360,7 +360,7 @@ def loadMoreViewsAll():
 	numViews = 0
 	availableSlots = []
 	try:
-		with open("lifelp/moreViewsAll.txt", "r") as file:
+		with open("lifelpDB/moreViewsAll.txt", "r") as file:
 			#first line stores number of views, vacant slots
 			first = True
 			for line in file:
@@ -412,14 +412,14 @@ def loadMoreViewsAll():
 					views[serialNum] = MetaCustomView(name, link_count)
 				
 	except IOError:
-		file = open("lifelp//moreViewsAll.txt", "w")
+		file = open("lifelpDB//moreViewsAll.txt", "w")
 		file.write("0:}")
 		file.close()
 	return views, numViews, availableSlots
 	
 	
 def saveMoreViewsAll(views, numViews, availableSlots):
-	with open("lifelp//moreViewsAll.txt", "w") as file:
+	with open("lifelpDB//moreViewsAll.txt", "w") as file:
 		file.write(str(numViews))
 		file.write(":")
 		for slot in availableSlots:
