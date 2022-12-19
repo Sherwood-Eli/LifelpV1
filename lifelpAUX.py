@@ -1,13 +1,21 @@
 import datetime
 
+def turnToInt(string):
+	if string[0] == "0":
+		string = string[1]
+	return int(string)
+
 def isNewWeek(sunday, lastLog):
 	if date1GreaterThan2(sunday, lastLog):
 		return True
 	return False
 
 def date1GreaterThan2(date1, date2):
-	if (int(date1[0:4]) > int(date2[0:4])) or (turnToInt(date1[5:7]) > turnToInt(date2[5:7])) or (turnToInt(date1[5:7]) >= turnToInt(date2[5:7])) and (turnToInt(date1[8:10]) > turnToInt(date2[8:10])):
+	if (int(date1[0:4]) > int(date2[0:4])):
 		return True
+	elif (int(date1[0:4]) == int(date2[0:4])):
+		if (turnToInt(date1[5:7]) > turnToInt(date2[5:7])) or (turnToInt(date1[5:7]) >= turnToInt(date2[5:7])) and (turnToInt(date1[8:10]) > turnToInt(date2[8:10])):
+			return True
 	return False
 
 
@@ -64,7 +72,7 @@ def incrFileKey(key):
 	if temp > 12:
 		newYear = int(key[0:4])
 		newYear+=1
-		return str(newYear) + "-" + "12"
+		return str(newYear) + "-" + "01"
 	elif temp < 10:
 		return key[0:5] + "0" + str(temp)
 	else:
