@@ -137,25 +137,16 @@ def savePresets(presets):
 				except UnicodeEncodeError:
 					continue
 			file.write("{")
-			if presets[preset].auto:
-				file.write("t")
-				if presets[preset].frequency == "every day":
-					file.write("1")
-				elif presets[preset].frequency == "every A day":
-					file.write("A")
-				elif presets[preset].frequency == "every B day":
-					file.write("B")
-			else:
-				file.write("f")
+			file.write(str(presets[preset].frequency))
+			file.write("}")
 			file.write("\n")
 
 class PresetTask:
-	def __init__(self, auto, frequency):
-		self.auto = auto
+	def __init__(self, frequency):
 		self.frequency = frequency
 		self.labelButton = None
-		self.autoButton = None
-		self.frequencyButton = None
+		self.editButton = None
+		self.frequencyButtons = []
 
 def loadPresets():
 	with open("lifelp/presets.txt", "r") as file:
@@ -170,19 +161,13 @@ def loadPresets():
 					x+=1
 				presetKeys.append(key)
 				x+=1
-				if line[x] == "t":
-					auto = True
+				frequency = ""
+				while line[x] != "}":
+					frequency+=line[x]
 					x+=1
-					if line[x] == "1":
-						frequency = "every day"
-					elif line[x] == "A":
-						frequency = "every A day"
-					elif line[x] == "B":
-						frequency = "every B day"
-				else:
-					auto = False
-					frequency = ""
-				presets[key] = PresetTask(auto, frequency)
+				frequency = int(frequency)
+
+				presets[key] = PresetTask(frequency)
 	return presets, presetKeys
 
 class BankTask:
@@ -270,6 +255,12 @@ def saveBank(bank):
 				file.write("f")
 			x+=1
 			
+
+
+
+
+
+			
 def createCustomViewData(serialNum, options):
 	fileName = "lifelp/moreViews/" + serialNum + ".txt"	
 	with open(fileName, "w") as file:
@@ -285,34 +276,82 @@ def createCustomViewData(serialNum, options):
 		file.write("}")
 		
 def loadCustomView(serialNum):
-	fileName = "lifelp/moreViews/" + serialNum + ".txt"	
+	fileName = "lifelp/moreViews/" + serialNum + ".txt"
+	#print("opening:", serialNum)	
 	options = []
-	tasks = {}
+	tasks = []
+	positions = []
+	completed = []
+	taskNum = 0
 	with open(fileName, "r") as file:
 		first = True
 		for line in file:
+			x = 0
 			if first:
-				x = 0
 				while line[x] != "}":
 					if line[x] == "b":
-						x+=1
-						if line[x] == "t":
+						if line[x+1] == "t":
 							options.append(True)
 						else:
 							options.append(False)
-						x+=1
+						x+=3
 					elif line[x] == "s":
-						option = ""
 						x+=1
+						string = ""
 						while line[x] != "_":
-							option+=line[x]
+							string += line[x]
 							x+=1
-						options.append(option)
-					x+=1
+						x+=1
+						options.append(string)
 				first = False
 			else:
-				tasks = {}
-			return tasks, options
+				taskOptions = []
+				aPosition = ""
+				if line[x] == "t":
+					completed.append(True)
+				else:
+					completed.append(False)
+				x+=1
+				while line[x] != "_":
+					aPosition += line[x]
+					x+=1
+				positions.append(int(aPosition))
+				x+=1
+				while line[x] != "}":
+					if line[x] == "b":
+						if line[x+1] == "t":
+							taskOptions.append(True)
+						else:
+							taskOptions.append(False)
+						x+=3
+					elif line[x] == "s":
+						x+=1
+						string = ""
+						while line[x] != "_":
+							string += line[x]
+							x+=1
+						x+=1
+						taskOptions.append(string)
+					elif line[x] == "c":
+						x+=1
+						type = ""
+						value = ""
+						while line[x] != "_":
+							type += line[x]
+							x+=1
+						x+=1
+						while line[x] != "_":
+							value += line[x]
+							x+=1
+						x+=1
+						taskOptions.append((int(type), value))
+						
+				tasks.append(taskOptions)
+				taskNum+=1
+			
+							
+							
+	return tasks, completed, positions, options
 			
 def saveCustomView(serialNum, options, tasks):
 	fileName = "lifelp/moreViews/" + serialNum + ".txt"	
@@ -329,7 +368,28 @@ def saveCustomView(serialNum, options, tasks):
 		file.write("}")
 		file.write("\n")
 		for task in tasks:
-			file.write(task)
+			if task.completed:
+				file.write("t")
+			else:
+				file.write("f")
+			file.write(str(task.position))
+			file.write("_")
+			for option in task.options:
+				if type(option) == type((1,1)):
+					file.write("c")
+					file.write(str(option[0]))
+					file.write("_")
+					file.write(option[1])
+				elif option == True:
+					file.write("bt")
+				elif option == False:
+					file.write("bf")
+				else:
+					file.write("s")
+					file.write(option)
+				file.write("_")
+			file.write("}")
+			file.write("\n")
 			
 def loadMoreViewsHome():
 	views = {}
@@ -365,6 +425,7 @@ def saveMoreViewsHome(views):
 			file.write(views[viewKey])
 			file.write("}")
 	
+	
 def loadMoreViewsAll():
 	views = {}
 	numViews = 0
@@ -396,6 +457,13 @@ def loadMoreViewsAll():
 						serialNum+=line[x]
 						x+=1
 					x+=1
+					linkCount = 0
+					linkCountTemp = ""
+					while line[x] != ":":
+						linkCountTemp+=line[x]
+						x+=1
+					x+=1
+					linkCount = int(linkCount)
 					name = ""
 					while line[x] != "}":
 						name+=line[x]
@@ -419,8 +487,12 @@ def saveMoreViewsAll(views, numViews, availableSlots):
 		file.write("}")
 		
 		for viewKey in views:
+			print(viewKey)
+			print(views[viewKey])
 			file.write("\n")
 			file.write(viewKey)
+			file.write(":")
+			file.write(views[viewKey].linkCount)
 			file.write(":")
 			file.write(views[viewKey])
 			file.write("}")
