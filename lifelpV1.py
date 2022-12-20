@@ -3,31 +3,13 @@ import datetime
 import time
 import lifelpDataBase
 import lifelpAUX
-import dataObjects
+import data_objects
 import gc
 
 from bank import Bank
 from presets import Presets
 from custom_view import *
 from buttons import *
-
-			
-#############################
-#############################
-#############################
-#Functions shared by classes#
-			
-
-			
-def activateBoolButton(sender):
-	if sender.title == "no":
-		sender.title = "yes"
-		sender.background_color = "2ce56d"
-	elif sender.title == "yes":
-		sender.title = "no"
-		sender.background_color = "red"
-
-
 
 
 #############################
@@ -43,32 +25,32 @@ class MainView:
 		self.screenWidth, self.screenHeight = ui.get_screen_size()
 
 		self.today = datetime.date.today()
-		self.todayS = str(today)
-		self.data = lifelpDataBase.getData(today)
+		self.todayS = str(self.today)
+		self.data = lifelpDataBase.getData(self.today)
 
 		self.view = ui.View(background_color = "f0fff5")
 		self.nav = ui.NavigationView(self.view)
-		self.trashButton = createTrashButton(self.view)
+		self.trashButton = createTrashButton(self)
 
 		self.bank = Bank(self)
 		self.presets = Presets(self)
-		self.moreViews = MoreViews("r", self.nav, None)
+		self.moreViews = MoreViews("r", self, None)
 		self.moreViews.finishSetup()
 
 		self.dateButtons = []
 		self.sundayIndexViewed = 0
-		self.monthBeingViewed = todayS[0:7]
+		self.monthBeingViewed = self.todayS[0:7]
 		
-		self.todayIndex = lifelpAUX.findTodayIndex(todayS, data)
+		self.todayIndex = lifelpAUX.findTodayIndex(self.todayS, self.data)
 		self.curDayView = None
 		self.createDateButtons()
 	
 	#creates the date buttons for the main view
 	def createDateButtons(self):
-		curMonth = todayS[0:7]
+		curMonth = self.todayS[0:7]
 		mIndex = 1
 		daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"]
-		self.sundayIndex = int(data[curMonth].sundayIndex)
+		self.sundayIndex = int(self.data[curMonth].sundayIndex)
 		alteredMonths = []
 
 		#if month transition is mid week
@@ -124,16 +106,16 @@ class MainView:
 					if self.presets.presets[preset].frequency & dayValue:
 						self.presets.placePreset(preset, x, self.sundayIndex)
 						
-			setDateButtonColor(button, day)
+			lifelpAUX.setDateButtonColor(button, day)
 
 			#adds dayLabel next to dateButton
 			dayLabel = ui.Label(text = daysOfWeek[x], font = ('<system-bold>', 20))
 			dayLabel.center = (60,  (50 + (55*x)))
 			self.view.add_subview(dayLabel)
 			
-		createPresetButton(self.view)
-		createMoreViewsButton(self.view)
-		createBankButton(self.view)
+		createPresetButton(self.view, self.presets)
+		createMoreViewsButton(self.view, self.moreViews)
+		createBankButton(self.view, self.bank)
 		createPrevButton(self)
 		createNextButton(self)
 		
@@ -189,8 +171,8 @@ class MainView:
 		month = sender.title[0:7]
 
 		#if from bank info is blank, open day view
-		if self.mainView.bank.fromBankInfo == "":
-			self.curDayView = MyDayView(sender, self)
+		if self.bank.fromBankInfo == "":
+			self.curDayView = MyDayView(self, sender)
 		else:
 			#add new bank-type task to day
 			date = sender.title
@@ -211,7 +193,7 @@ class MainView:
 
 	#deletes bank task
 	#trigger: trash can button on mainView
-	def deleteBankTask(sender):
+	def deleteBankTask(self, sender):
 		#delete bank task
 		del self.bank.bank[self.bank.fromBankInfo]
 		self.bank.bankKeys.remove(self.bank.fromBankInfo)
@@ -235,7 +217,7 @@ class MainView:
 #for the curent day being viewed
 					
 class MyDayView:
-	def __init__(self, mainView):
+	def __init__(self, mainView, sender):
 		self.mainView = mainView
 
 		self.editMode = False
@@ -246,6 +228,8 @@ class MyDayView:
 		self.taskLabels = []
 
 		curDate = sender.title
+		month = curDate[0:7]
+		
 		self.date = curDate
 		self.dateButton = sender
 		numTasks = 1
@@ -264,7 +248,7 @@ class MyDayView:
 				button.background_color = "#2ce56d"
 			else:
 				button.background_color = "red"
-			if lifelpAUX.date1GreaterThan2(bank.lastLastLog, curDate) == False:
+			if lifelpAUX.date1GreaterThan2(self.mainView.bank.lastLastLog, curDate) == False:
 				button.action = self.taskButton
 			label = ui.Label()
 			self.taskLabels.append(label)
@@ -276,7 +260,7 @@ class MyDayView:
 			numTasks+=1
 			x+=1
 		#day is only editable if not in the past
-		if lifelpAUX.date1GreaterThan2(todayS, curDate) == False:
+		if lifelpAUX.date1GreaterThan2(self.mainView.todayS, curDate) == False:
 			createAddTaskButton(self, "task")
 			self.editButton = createEditButton(self, "d")
 			editMode = False
@@ -287,7 +271,7 @@ class MyDayView:
 	
 	def dayEditMode(self, sender):
 		if sender.title == "done":
-			tasks = self.data[self.date[0:7]].days[self.date].tasks
+			tasks = self.mainView.data[self.date[0:7]].days[self.date].tasks
 			self.editMode = False
 			sender.title = "edit"
 			x = 0
@@ -311,9 +295,9 @@ class MyDayView:
 		self.view.remove_subview(self.textField)
 		if textfield.text != "":
 			month = self.date[0:7]
-			day = self.data[month].days[self.date]
+			day = self.mainView.data[month].days[self.date]
 			numTasks = len(day.tasks) + 1
-			day.tasks[textfield.text] = dataObjects.Task()
+			day.tasks[textfield.text] = data_objects.Task()
 			lifelpDataBase.saveData(month, self.mainView.data)
 			h = 70 + (40*numTasks)
 			button = ui.Button(title = str(numTasks))
@@ -340,10 +324,8 @@ class MyDayView:
 			self.dateButton.background_color = "red"
 	
 	def taskButton(self, sender):
-		global data
-		global bank
 		month = self.date[0:7]
-		day = data[month].days[self.date]
+		day = self.mainView.data[month].days[self.date]
 		tasks = day.tasks
 		taskKeys = list(tasks.keys())
 		if sender.title == "🗑️":
@@ -351,8 +333,8 @@ class MyDayView:
 			maxIndex = len(self.taskButtons) - 1
 			#can only delete things from present and future days so this is coo
 			if tasks[taskKeys[indexToDelete]].type == "b": 
-				bank.bank[taskKeys[indexToDelete]].outCount -= 1
-				bank.bank[taskKeys[indexToDelete]].dates.remove(day)
+				self.mainView.bank.bank[taskKeys[indexToDelete]].outCount -= 1
+				self.mainView.bank.bank[taskKeys[indexToDelete]].dates.remove(day)
 				lifelpDataBase.saveBank(bank)
 			del tasks[taskKeys[indexToDelete]]
 			del taskKeys[indexToDelete]
@@ -367,7 +349,7 @@ class MyDayView:
 				self.taskButtons[x].name = str(x)
 			if maxIndex == 0:
 				dayEditMode(self.editButton)
-			lifelpDataBase.saveData(month, data)
+			lifelpDataBase.saveData(month, self.mainView.data)
 			
 		else:
 			index = int(sender.title) - 1
@@ -404,9 +386,9 @@ class MyDayView:
 							setDateButtonColor(mainView.dateButtons[pastDay.buttonIndex], pastDay)
 					bank.bank[task].complete = False
 					lifelpDataBase.saveBank(bank)
-			setDateButtonColor(self.dateButton, day)
+			lifelpAUX.setDateButtonColor(self.dateButton, day)
 			for x in tMonths:
-				lifelpDataBase.saveData(x, data)
+				lifelpDataBase.saveData(x, self.mainView.data)
 	
 	
 	
@@ -416,5 +398,5 @@ class MyDayView:
 #           main            #
 
 if __name__ == "__main__":
-	mainView = MainView(master_view, master_nav, trashButton)
+	mainView = MainView()
 	
