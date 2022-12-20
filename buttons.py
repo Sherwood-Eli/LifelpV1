@@ -1,3 +1,5 @@
+import ui
+
 #############################
 #############################
 #############################
@@ -52,20 +54,24 @@ def createEditButton(viewClass, type):
 		button.border_width = 1
 	return button
 
-def createCreateButton(view, title, type):
+def createCreateButton(viewClass, title, type):
 	button = ui.Button(font = ('<system-bold>',30), title = title)
 	button.center = (200, 700)
 	button.background_color = "white"
 	button.border_color = "black"
 	button.border_width = 1
 	if type == "v":
-		button.action = moreViews.setCustomViewSettings
+		button.action = viewClass.setCustomViewSettings
+		viewClass.customViewOptionsView.add_subview(button)
 	elif type == "t":
-		button.action = moreViews.curView.setCustomTaskSettings
-	view.add_subview(button)
+		#during initialization, curView will be None
+		if viewClass.curView != None:
+			button.action = viewClass.curView.setCustomTaskSettings
+		viewClass.customTaskOptionsView.add_subview(button)
+	
 	return button
 
-def createMoreViewsButton(view):
+def createMoreViewsButton(view, moreViews):
 	button = ui.Button(font = ('<system-bold>',20), title = "more views")
 	button.flex = "LRTB"
 	button.center = (50, 77)
@@ -75,17 +81,17 @@ def createMoreViewsButton(view):
 	button.border_width = 1
 	view.add_subview(button)
 
-def createPresetButton(view):
+def createPresetButton(view, presets):
 	preset = ui.Button(font = ('<system-bold>',20), title = " presets ")
 	preset.flex = "LRTB"
 	preset.center = (60, 77)
 	preset.background_color = "white"
-	preset.action = presetWindow.showPresetView
+	preset.action = presets.showPresetView
 	preset.border_color = "black"
 	preset.border_width = 1
 	view.add_subview(preset)
 
-def createBankButton(view):
+def createBankButton(view, bank):
 	bankBut = ui.Button(font = ('<system-bold>',20), title = "bank")
 	bankBut.flex = "LRTB"
 	bankBut.center = (35, 77)
@@ -113,16 +119,16 @@ def createNextButton(viewClass):
 	next.border_width = 1
 	viewClass.view.add_subview(next)
 	
-def createTrashButton(view):
+def createTrashButton(viewClass):
 	button = ui.Button(font = ('<system-bold>', 40), title = "🗑️")
-	button.action = deleteBankTask
+	button.action = viewClass.deleteBankTask
 	button.center = (215, 650)
 	button.border_color = "black"
 	button.background_color = "white"
 	button.border_width = 1
 	return button
 	
-def createOptionsTrashButton(kind):
+def createOptionsTrashButton(kind, viewClass):
 	button = ui.Button(title = "🗑️")
 	button.center = (75, 700)
 	button.border_color = "black"
@@ -130,8 +136,8 @@ def createOptionsTrashButton(kind):
 	button.border_width = 1
 	
 	if kind == "v":
-		button.action = moreViews.promptConfirmDelete
+		button.action = viewClass.promptConfirmDelete
 	elif kind == "t":
-		button.action.moreViews.curView.deleteTask
+		button.action = viewClass.curView.deleteTask
 	
 	return button
