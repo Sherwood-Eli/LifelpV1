@@ -100,3 +100,11 @@ def setDateButtonColor(button, day):
 	else:
 		if day.buttonIndex == 0:
 			button.background_color = "2ce56d"
+			
+def activateBoolButton(sender):
+	if sender.title == "no":
+		sender.title = "yes"
+		sender.background_color = "2ce56d"
+	elif sender.title == "yes":
+		sender.title = "no"
+		sender.background_color = "red"
