@@ -1,6 +1,6 @@
 import lifelpAUX
 import datetime
-import dataObjects
+import data_objects
 
 def createData(fileKey):
 	global data
@@ -48,7 +48,7 @@ def getData(today):
 def loadData(fileKey):
 	fileName = fileKey + "-data.txt"
 	fileName = "lifelpDB/" + fileName
-	monthData = MyMonth()
+	monthData = data_objects.MyMonth()
 	first = True
 	try:
 		file = open(fileName, "r", encoding='utf-8')
@@ -62,7 +62,7 @@ def loadData(fileKey):
 				while line[x] != "{":
 					date += line[x]
 					x+=1
-				monthData.days[date] = MyDay()
+				monthData.days[date] = data_objects.MyDay()
 				monthData.dataKeys.append(date)
 				tempTasks = {}
 				x+=1
@@ -72,7 +72,7 @@ def loadData(fileKey):
 						task += line[x]
 						x+=1
 					x+=1
-					tempTasks[task] = Task()
+					tempTasks[task] = data_objects.Task()
 					if line[x] == "t":
 						tempTasks[task].complete = True
 					elif line[x] == "f":
@@ -145,7 +145,7 @@ def loadPresets():
 					x+=1
 				frequency = int(frequency)
 
-				presets[key] = PresetTask(frequency)
+				presets[key] = data_objects.PresetTask(frequency)
 	return presets, presetKeys
 
 def loadBank():
@@ -196,7 +196,7 @@ def loadBank():
 					complete = True
 				else:
 					complete = False
-				bank[task] = BankTask(outCount, dates, complete)
+				bank[task] = data_objects.BankTask(outCount, dates, complete)
 	return lastLastLog, lastLog, bank, bankKeys
 
 def saveBank(bank):
@@ -409,7 +409,7 @@ def loadMoreViewsAll():
 					while line[x] != "}":
 						name+=line[x]
 						x+=1
-					views[serialNum] = MetaCustomView(name, link_count)
+					views[serialNum] = data_objects.MetaCustomView(name, link_count)
 				
 	except IOError:
 		file = open("lifelpDB//moreViewsAll.txt", "w")
@@ -432,7 +432,7 @@ def saveMoreViewsAll(views, numViews, availableSlots):
 			file.write("\n")
 			file.write(viewKey)
 			file.write(":")
-			file.write(views[viewKey].link_count)
+			file.write(str(views[viewKey].link_count))
 			file.write(":")
 			file.write(views[viewKey].name)
 			file.write("}")
