@@ -4,6 +4,9 @@ This component holds all of the code for the presets view.
 
 from buttons import *
 import lifelpAUX
+import lifelpDataBase
+import datetime
+import data_objects
 
 
 #############################
@@ -109,11 +112,11 @@ class Presets:
 			sender.background_color = "2ce56d"
 			self.presets[preset].frequency+=valueChange
 			
-			day = self.placePreset(preset, place, self.sunday_index)
+			day = self.placePreset(preset, place, self.mainView.sundayIndex)
 			
 			if day != None:
 			
-				lifelpAUX.setDateButtonColor(self.dateButtons[place], day)
+				lifelpAUX.setDateButtonColor(self.mainView.dateButtons[place], day)
 		
 		else:
 			sender.background_color = "red"
@@ -144,7 +147,7 @@ class Presets:
 			editButton.action = self.deletePreset
 			editButton.name = str(self.numPresets)
 			
-			if editMode:
+			if self.editMode:
 				self.view.add_subview(editButton)
 			
 			presetButton = ui.Button(title = newPreset, font = ('<system>',20))
@@ -168,7 +171,7 @@ class Presets:
 			self.numPresets+=1
 			
 			self.presetKeys.append(newPreset)
-			self.presets[newPreset] = lifelpDataBase.PresetTask(0)
+			self.presets[newPreset] = data_objects.PresetTask(0)
 			
 			self.presets[newPreset].labelButton = presetButton
 			self.presets[newPreset].editButton = editButton
@@ -216,20 +219,20 @@ class Presets:
 		todayS = str(today)
 		dataKey = todayS[0:7]	
 	
-		if tempSunInd + place >= len(data[dataKey].days):
+		if tempSunInd + place >= len(self.mainView.data[dataKey].days):
 			dataKey = lifelpAUX.incrFileKey(dataKey)
-			tempSunInd = data[dataKey].sundayIndex - 7
-		date = data[dataKey].dataKeys[tempSunInd + place]
+			tempSunInd = self.mainView.data[dataKey].sundayIndex - 7
+		date = self.mainView.data[dataKey].dataKeys[tempSunInd + place]
 		
 		if not lifelpAUX.date1GreaterThan2(todayS, date):
 			
-			day = data[dataKey].days[date]
+			day = self.mainView.data[dataKey].days[date]
 			
-			day.tasks[preset] = lifelpDataBase.Task()
+			day.tasks[preset] = data_objects.Task()
 			day.tasks[preset].complete = False
 			day.tasks[preset].type = "p"
 			
-			lifelpDataBase.saveData(dataKey, data)
+			lifelpDataBase.saveData(dataKey, self.mainView.data)
 			
 			return day
 			
@@ -238,12 +241,12 @@ class Presets:
 	def removePreset(self, preset, place):
 		todayS = str(datetime.date.today())		
 		dataKey = todayS[0:7]
-		tempSunInd = self.sunday_index		
+		tempSunInd = self.mainView.sundayIndex		
 		
 		if tempSunInd + place >= len(self.mainView.data[dataKey].days):
 			dataKey = lifelpAUX.incrFileKey(dataKey)
 			tempSunInd = self.mainView.data[dataKey].sundayIndex - 7
-		date = data[dataKey].dataKeys[tempSunInd + place]
+		date = self.mainView.data[dataKey].dataKeys[tempSunInd + place]
 		if not lifelpAUX.date1GreaterThan2(todayS, date):
 			
 			day = self.mainView.data[dataKey].days[date]
@@ -251,6 +254,6 @@ class Presets:
 			if preset in day.tasks:
 				del day.tasks[preset]
 			
-			setDateButtonColor(self.dateButtons[place], day)
+			lifelpAUX.setDateButtonColor(self.mainView.dateButtons[place], day)
 			
 			lifelpDataBase.saveData(dataKey, self.mainView.data)
