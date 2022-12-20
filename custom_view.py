@@ -1,6 +1,8 @@
 from buttons import *
-from lifelpDataBase import MetaCustomView
-
+import data_objects
+import lifelpDataBase
+import lifelpAUX
+import gc
 
 #############################
 #############################
@@ -13,7 +15,10 @@ from lifelpDataBase import MetaCustomView
 #moreViews section
 
 class SettingOption:
-	def __init__(self, name, type, choices):
+	def __init__(self, name, type, choices, mainView, moreViews):
+		self.mainView = mainView
+		self.moreViews = moreViews
+		
 		self.name = name
 		self.type = type
 		self.choices = choices
@@ -30,13 +35,13 @@ class SettingOption:
 			button.name = "select"
 			self.helperButton = button
 		if kind == "view":
-			self.helperButton.action = moreViews.chooseViewLink
-			moreViews.customTaskOptionsView.add_subview(self.helperButton)
+			self.helperButton.action = self.moreViews.chooseViewLink
+			self.moreViews.customTaskOptionsView.add_subview(self.helperButton)
 			self.helperButton.title = "none"
 			self.helperButtonActive = True
 		else:
 			helperButtonActive = False
-			moreViews.customTaskOptionsView.remove_subview(self.helperButton)
+			self.moreViews.customTaskOptionsView.remove_subview(self.helperButton)
 		
 		
 	
@@ -46,9 +51,9 @@ class SettingOption:
 			self.choiceIndex = 0
 		sender.title = self.choices[self.choiceIndex]
 		if self.helperButtonActive:
-			moreViews.customTaskOptionsView.remove_subview(self.helperButton)
+			self.moreViews.customTaskOptionsView.remove_subview(self.helperButton)
 			self.helperButtonActive = False
-		self.addHelperButton(choiceIndex)
+		self.addHelperButton(self.choiceIndex)
 
 
 
@@ -69,9 +74,9 @@ class SettingOption:
 #more views section 
 
 class MoreViews:
-	def __init__(self, type, master_nav, home_view):
+	def __init__(self, type, mainView, home_view):
 		self.view = ui.View()
-		self.nav = master_nav
+		self.mainView = mainView
 		if home_view:
 			self.home_view = home_view
 		self.view.background_color = "f0fff5"	
@@ -81,7 +86,7 @@ class MoreViews:
 		#for creation of regular home view
 		if type == "r":
 			self.editButton = createEditButton(self, "mr")
-			self.selectView = MoreViews("s", self.nav, self)
+			self.selectView = MoreViews("s", self.mainView, self)
 
 		#for creation of select home view	
 		elif type == "s":
@@ -103,7 +108,7 @@ class MoreViews:
 
 	def place_home_view_views(self):
 		for viewKey in self.allViews:
-			if self.allViews.link_count == 0:
+			if self.allViews[viewKey].link_count == 0:
 				#create button
 				button = ui.Button(title = "00000000000000000000")
 				button.center = (105 + 205 * self.x, 40 + 40 * self.y)
@@ -120,7 +125,7 @@ class MoreViews:
 					self.x = 0
 					self.y+=1
 
-	def delete_home_view_views():
+	def delete_home_view_views(self):
 		for button in self.moreViewButtons:
 			self.view.remove_subview(button)
 			del(button)
@@ -135,15 +140,15 @@ class MoreViews:
 		self.availableViewOptions = []
 		
 		#option 1
-		self.availableViewOptions.append(SettingOption("title", "s", []))
+		self.availableViewOptions.append(SettingOption("title", "s", [], self.mainView, self))
 		
 		#option 2
-		self.availableViewOptions.append(SettingOption("completable", "b", []))
+		self.availableViewOptions.append(SettingOption("completable", "b", [], self.mainView, self))
 	
 		self.customViewOptionsView = ui.View(background_color = "f0fff5")
-		self.customViewOptionsConfirmButton = createCreateButton(self.customViewOptionsView, "create", "v")
+		self.customViewOptionsConfirmButton = createCreateButton(self, "create", "v")
 		
-		self.customViewOptionsTrashButton = createOptionsTrashButton("v")
+		self.customViewOptionsTrashButton = createOptionsTrashButton("v", self)
 		
 		self.customViewOptionsConfirmDeleteLabel = ui.Label(text="delete view?", center=(80,670))
 		
@@ -159,14 +164,14 @@ class MoreViews:
 		self.availableTaskOptions = []
 		
 		#taskOption 1
-		self.availableTaskOptions.append(SettingOption("name", "s", None))
+		self.availableTaskOptions.append(SettingOption("name", "s", None, self.mainView, self))
 		
 		#TaskOption 2
-		self.availableTaskOptions.append(SettingOption("action", "c", ["view", "note", "distribute"]))
+		self.availableTaskOptions.append(SettingOption("action", "c", ["view", "note", "distribute"], self.mainView, self))
 		
 		self.customTaskOptionsView = ui.View(background_color = "f0fff5")
-		#we pass v because we need to change action to a method of a specific opjext later on
-		self.customTaskOptionsConfirmButton = createCreateButton(self.customTaskOptionsView, "create", "v")
+		
+		self.customTaskOptionsConfirmButton = createCreateButton(self, "create", "t")
 		
 		self.putOptionsOnView(self.customTaskOptionsView, self.availableTaskOptions, self.chosenTaskOptions)
 		
@@ -181,7 +186,7 @@ class MoreViews:
 			if option.type == "b":
 				button = ui.Button(title = "XXX")
 				button.center = (275, 80 + 45*int(x))
-				button.action = activateBoolButton
+				button.action = lifelpAUX.activateBoolButton
 				button.name = "b" + str(x)
 				view.add_subview(button)
 				button.title = "no"
@@ -206,9 +211,15 @@ class MoreViews:
 				chosenOptions.append(button)
 			x+=1
 		
+	def showView(self, sender):
+		#this edit mode is for editing the home view
+		if self.editMode:
+			self.moreEditMode(self.editButton)
+		self.mainView.nav.push_view(self.view)
+		
 	def chooseViewLink(self, sender):
 		self.curView.buttonNeedingLink = sender
-		self.selectView.view.present("fullscreen", hide_title_bar=True)
+		self.mainView.nav.push_view(self.view)
 			
 	def openCustomViewFromHome(self, sender):
 		if self.editMode:
@@ -227,7 +238,7 @@ class MoreViews:
 			self.view.close()
 		else:
 			self.curView = self.getView(serialNum)
-			self.nav.push_view(self.curView.view)
+			self.mainView.nav.push_view(self.curView.view)
 	
 	#gets a view if it is already open, else open a view
 	def getView(self, serialNum):
@@ -236,7 +247,7 @@ class MoreViews:
 		
 		#i might add some sort of reference counter thing to close ones we dont want after a while to increase efficiency
 		if serialNum not in self.openViews:
-			self.openViews[serialNum] = CustomView(serialNum)
+			self.openViews[serialNum] = CustomView(serialNum, self, self.mainView)
 			
 		return self.openViews[serialNum]
 		
@@ -273,7 +284,7 @@ class MoreViews:
 			self.customViewOptionsConfirmButton.center = (210, 700)
 			self.customViewOptionsView.remove_subview(self.customViewOptionsTrashButton)
 		
-		self.customViewOptionsView.present("fullscreen")
+		self.mainView.nav.push_view(self.customViewOptionsView)
 		
 		
 	def promptConfirmDelete(self, sender):
@@ -330,7 +341,7 @@ class MoreViews:
 			
 			lifelpDataBase.createCustomViewData(serialNum, options)
 				
-			self.allViews[serialNum] = MetaCustomView(option[0], 0)
+			self.allViews[serialNum] = data_objects.MetaCustomView(options[0], 0)
 			
 			lifelpDataBase.saveMoreViewsAll(self.allViews, self.numSlots, self.availableSlots)
 			
@@ -403,13 +414,16 @@ class MoreViews:
 #created in the more views section
 
 class CustomView:
-	def __init__(self, serialNum):
+	def __init__(self, serialNum, moreViews, mainView):
+		self.moreViews = moreViews
+		self.mainView = mainView
+		
 		self.view = None
 		
 		self.tasks = []
 		taskOptions, taskCompleted, taskPositions, self.options = lifelpDataBase.loadCustomView(serialNum)
 		for x in range(len(taskOptions)):
-			task = CustomTask(taskPositions[x], taskCompleted[x], taskOptions[x])
+			task = CustomTask(taskPositions[x], taskCompleted[x], taskOptions[x], moreViews)
 			self.tasks.append(task)
 		
 		self.serialNum = serialNum
@@ -454,47 +468,47 @@ class CustomView:
 	def openCustomTaskOptions(self, mode, p):
 		editMode = (mode == "edit")
 		x = 0
-		for option in moreViews.availableTaskOptions:
+		for option in self.moreViews.availableTaskOptions:
 			#needs boolean value
 			if option.type == "b":
 				if editMode and self.tasks[p].options[x] == True:
-					moreViews.chosenTaskOptions[x].title = "yes"
-					moreViews.chosenTaskOptions[x].background_color = "2ce56d"
+					self.moreViews.chosenTaskOptions[x].title = "yes"
+					self.moreViews.chosenTaskOptions[x].background_color = "2ce56d"
 				else:
-					moreViews.chosenTaskOptions[x].title = "no"
-					moreViews.chosenTaskOptions[x].background_color = "red"
+					self.moreViews.chosenTaskOptions[x].title = "no"
+					self.moreViews.chosenTaskOptions[x].background_color = "red"
 			#needs string value
 			elif option.type == "s":
 				if editMode:
-					moreViews.chosenTaskOptions[x].text = self.tasks[p].options[x]
+					self.moreViews.chosenTaskOptions[x].text = self.tasks[p].options[x]
 				else:
-					moreViews.chosenTaskOptions[x].text = ""
+					self.moreViews.chosenTaskOptions[x].text = ""
 			elif option.type == "c":
 				if editMode:
 					choiceIndex = self.tasks[p].options[x][0]
-					moreViews.chosenTaskOptions[x].title = option.choices[choiceIndex]
+					self.moreViews.chosenTaskOptions[x].title = option.choices[choiceIndex]
 					option.addHelperButton(choiceIndex)
 					option.helperButton.title = self.tasks[p].options[x][1]
 				else:
-					moreViews.chosenTaskOptions[x].title = option.choices[0]
+					self.moreViews.chosenTaskOptions[x].title = option.choices[0]
 					option.addHelperButton(0)
 			x+=1
 				
 			if editMode:
-				moreViews.customTaskOptionsConfirmButton.title = "save"
+				self.moreViews.customTaskOptionsConfirmButton.title = "save"
 				self.curTask = self.tasks[p]
 				#moreViews.customTaskOptionsConfirmButton.center = (55, 70)
 			else:
-				moreViews.customTaskOptionsConfirmButton.title = "create"
+				self.moreViews.customTaskOptionsConfirmButton.title = "create"
 				#moreViews.customTaskOptionsConfirmButton.center = (50, 70)
-			moreViews.customTaskOptionsConfirmButton.action = moreViews.curView.setCustomTaskSettings
+			self.moreViews.customTaskOptionsConfirmButton.action = self.moreViews.curView.setCustomTaskSettings
 		
-		moreViews.customTaskOptionsView.present("fullscreen")
+		self.mainView.nav.push_view(self.moreViews.customTaskOptionsView)
 		
 		
 	def setCustomTaskSettings(self, sender):
-		options = [None] * len(moreViews.chosenTaskOptions)
-		for x in moreViews.chosenTaskOptions:
+		options = [None] * len(self.moreViews.chosenTaskOptions)
+		for x in self.moreViews.chosenTaskOptions:
 			index = int(x.name[1])
 			type = x.name[0]
 			if type == "b":
@@ -503,12 +517,12 @@ class CustomView:
 				elif x.title == "no":
 					options[index] = False
 			elif type == "s":
-				options[index] = moreViews.chosenTaskOptions[index].text
+				options[index] = self.moreViews.chosenTaskOptions[index].text
 			elif type == "c":
-				options[index] = (int(moreViews.availableTaskOptions[index].choiceIndex), moreViews.availableTaskOptions[index].helperButton.title)
+				options[index] = (int(self.moreViews.availableTaskOptions[index].choiceIndex), self.moreViews.availableTaskOptions[index].helperButton.title)
 			
 		if sender.title == "create":
-			task = CustomTask(len(self.tasks), False, options)
+			task = CustomTask(len(self.tasks), False, options, self.moreViews)
 			self.tasks.append(task)
 		elif sender.title == "save":
 			task = self.curTask
@@ -526,7 +540,7 @@ class CustomView:
 		lifelpDataBase.saveCustomView(self.serialNum, self.options, self.tasks)
 		
 			#then i guess i should just re-present the physicsl view
-		moreViews.customTaskOptionsView.close()	
+		self.moreViews.customTaskOptionsView.close()	
 	
 	def customEditMode(self, sender):
 		if sender.title == "edit":
@@ -549,7 +563,7 @@ class CustomView:
 			sender.title = "edit"
 		
 	def linkView(self, serialNum):
-		moreViews.curView.buttonNeedingLink.title = serialNum
+		self.moreViews.curView.buttonNeedingLink.title = serialNum
 		
 	def saveSelf(self):
 		lifelpDataBase.saveCustomView(self.serialNum, self.options, self.tasks)
@@ -568,19 +582,21 @@ class CustomView:
 #in the MoreViews section
 
 class CustomTask:
-	def __init__(self, position, completed, options):
+	def __init__(self, position, completed, options, moreViews):
 		#position in the display order
 		self.position = position
 		#is task completed
 		self.completed = completed
 		self.completionButton = None
 		
+		self.moreViews = moreViews
+		
 		self.setOptions(options)
 		
 		
 	def setTaskCompletion(self, sender):
 		if sender.background_color == (1.0, 0.34901960784313724, 0.11764705882352941, 1.0):
-			moreViews.curView.editTask(self.position)
+			self.moreViews.curView.editTask(self.position)
 		else:
 			if self.completed:
 				sender.background_color = "red"
@@ -588,13 +604,11 @@ class CustomTask:
 			else:
 				sender.background_color = "#2ce56d"
 				self.completed = True
-			moreViews.curView.saveSelf()
+			self.moreViews.curView.saveSelf()
 		
 	def openAttachedView(self, sender):
-		global moreViews
-		
 		if self.attachedView != "none":
-			moreViews.openCustomView(self.attachedView)
+			self.moreViews.openCustomView(self.attachedView)
 		
 	def setOptions(self, options):
 		self.options = options
