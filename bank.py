@@ -1,4 +1,6 @@
 from buttons import *
+import lifelpDataBase
+import datetime
 
 
 
@@ -17,12 +19,12 @@ class Bank:
 		self.lastLastLog, self.lastLog, self.bank, self.bankKeys = lifelpDataBase.loadBank()
 		self.fromBankInfo = ""
 		self.newDay = False
-		if self.lastLog != todayS:
+		if self.lastLog != self.mainView.todayS:
 			self.checkForIncomplete()
 			self.cleanBank()
 			self.newDay = True
 			self.lastLastLog = self.lastLog
-			self.lastLog = todayS
+			self.lastLog = self.mainView.todayS
 			lifelpDataBase.saveBank(self)
 	
 	def presentBankView(self, sender):
@@ -57,7 +59,7 @@ class Bank:
 			self.bankKeys.remove(task)
 	
 	def checkForIncomplete(self):
-		day = today
+		day = self.mainView.today
 		dayS = str(day)
 		while(dayS != self.lastLog):
 			day = day - datetime.timedelta(days=1)
@@ -82,5 +84,5 @@ class Bank:
 	
 	def fromBank(self, sender):
 		self.fromBankInfo = sender.title
-		self.master_view.add_subview(self.trashButton)
-		self.view.close()
+		self.mainView.view.add_subview(self.mainView.trashButton)
+		self.mainView.nav.pop_view()
