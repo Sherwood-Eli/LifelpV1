@@ -14,54 +14,46 @@ import gc
 #custom views and tasks in the
 #moreViews section
 
-class SettingOption:
-	def __init__(self, name, type, choices, mainView, moreViews):
-		self.mainView = mainView
-		self.moreViews = moreViews
+class Setting_Option:
+	def __init__(self, name, type, choices, main_view, more_views):
+		self.main_view = main_view
+		self.more_views = more_views
 		
 		self.name = name
 		self.type = type
 		self.choices = choices
-		self.choiceIndex = 0
-		self.helperButton = None
-		self.helperButtonActive = False
+		self.choice_index = 0
+		self.helper_button = None
+		self.helper_button_active = False
 		
-	def addHelperButton(self, index):
+	def add_helper_button(self, index):
 		kind = self.choices[index]
-		if self.helperButton == None:
+		if self.helper_button == None:
 			button = ui.Button(title = "XXXX")
 			button.center = (325, 80 + 45)
 			button.background_color = "white"
 			button.name = "select"
-			self.helperButton = button
+			self.helper_button = button
 		if kind == "view":
-			self.helperButton.action = self.moreViews.chooseViewLink
-			self.moreViews.customTaskOptionsView.add_subview(self.helperButton)
-			self.helperButton.title = "none"
-			self.helperButtonActive = True
+			self.helper_button.action = self.more_views.choose_view_link
+			self.more_views.custom_task_options_view.add_subview(self.helper_button)
+			self.helper_button.title = "none"
+			self.helper_button_active = True
 		else:
-			helperButtonActive = False
-			self.moreViews.customTaskOptionsView.remove_subview(self.helperButton)
+			helper_button_active = False
+			self.more_views.custom_task_options_view.remove_subview(self.helper_button)
 		
 		
 	
-	def cycleChoice(self, sender):
-		self.choiceIndex+=1
-		if self.choiceIndex%len(self.choices) == 0:
-			self.choiceIndex = 0
-		sender.title = self.choices[self.choiceIndex]
-		if self.helperButtonActive:
-			self.moreViews.customTaskOptionsView.remove_subview(self.helperButton)
-			self.helperButtonActive = False
-		self.addHelperButton(self.choiceIndex)
-
-
-
-
-
-
-
-
+	def cycle_choice(self, sender):
+		self.choice_index+=1
+		if self.choice_index%len(self.choices) == 0:
+			self.choice_index = 0
+		sender.title = self.choices[self.choice_index]
+		if self.helper_button_active:
+			self.more_views.custom_task_options_view.remove_subview(self.helper_button)
+			self.helper_button_active = False
+		self.add_helper_button(self.choice_index)
 
 
 #############################
@@ -73,112 +65,130 @@ class SettingOption:
 #for the home view for the
 #more views section 
 
-class MoreViews:
-	def __init__(self, type, mainView, home_view):
+class More_Views:
+	def __init__(self, main_view):
+		self.main_view = main_view
+
+		self.edit_mode = False
+		self.select_mode = False
+
+		#create home view
 		self.view = ui.View()
-		self.mainView = mainView
-		if home_view:
-			self.home_view = home_view
-		self.view.background_color = "f0fff5"	
-		self.editMode = False
-		self.selectMode = False
+		self.view.background_color = "f0fff5"
 
-		#for creation of regular home view
-		if type == "r":
-			self.editButton = createEditButton(self, "mr")
-			self.selectView = MoreViews("s", self.mainView, self)
-
-		#for creation of select home view	
-		elif type == "s":
-			self.editButton = createEditButton(self, "ms")
-
-		self.addTaskButton = createAddTaskButton(self, "customView")	
-		self.moreViewButtons = []
+		self.add_task_button = create_add_task_button(self, "customView")	
+		self.more_view_buttons = []
 		self.x = 0
 		self.y = 0
 		
 		#load all view meta data
-		self.allViews, self.numSlots, self.availableSlots = lifelpDataBase.loadMoreViewsAll()
+		self.all_views, self.num_slots, self.available_slots = lifelpDataBase.loadMoreViewsAll()
 		
-		self.curView = None
-		#CHECK self.viewPath = []
-		self.openViews = {}
+		#create custum_view_view
+		self.custom_view_view = ui.View(background_color = "f0fff5")
+		self.custom_view_view_title = ui.Button(title = "00000000000000000000", center = (50, 50), action = self.edit_custom_view)
+		self.custom_view_view.add_subview(self.custom_view_view_title)
+		back_button = ui.Button(title="back", center = (90, 50), action = self.close_custom_view)
+		self.custom_view_view.add_subview(back_button)
+		home_button = ui.Button(title="home", center = (10, 50), action = self.close_custom_view_view)
+		self.custom_view_view.add_subview(home_button)
 
-		self.place_home_view_views()
+		self.cur_view = None
+		self.view_path = []
+		self.open_views = {}
 
-	def place_home_view_views(self):
-		for viewKey in self.allViews:
-			if self.allViews[viewKey].link_count == 0:
+		#create custum_view_view_select_mode
+		self.custom_view_view_select = ui.View(background_color = "f0fff5")
+		self.custom_view_view_title_select = ui.Button(title = "00000000000000000000", center = (50, 50), action = self.select_custom_view)
+		self.custom_view_view_select.add_subview(self.custom_view_view_title)
+		back_button = ui.Button(title="back", center = (90, 50), action = self.close_custom_view)
+		self.custom_view_view_select.add_subview(back_button)
+		home_button = ui.Button(title="home", center = (10, 50), action = self.close_custom_view_view)
+		self.custom_view_view_select.add_subview(home_button)
+
+		self.cur_view_select = None
+		self.view_path_select = []
+
+		self.place_home_view_links()
+
+	def place_home_view_links(self):
+		for view_key in self.all_views:
+			if self.all_views[view_key].link_count == 0:
 				#create button
 				button = ui.Button(title = "00000000000000000000")
 				button.center = (105 + 205 * self.x, 40 + 40 * self.y)
 				button.background_color = "white"
 				button.border_color = "black"
 				button.border_width = 1
-				button.action = self.openCustomViewFromHome
+				button.action = self.open_custom_view
 				self.view.add_subview(button)
-				button.title = self.allViews[viewKey].name
-				button.name = viewKey
-				self.moreViewButtons.append(button)
+				button.title = self.all_views[view_key].name
+				button.name = view_key
+				self.more_view_buttons.append(button)
 				self.x+=1
 				if self.x%2 == 0:
 					self.x = 0
 					self.y+=1
 
-	def delete_home_view_views(self):
-		for button in self.moreViewButtons:
+	def remove_home_view_links(self):
+		self.more_view_buttons = []
+		for button in self.more_view_buttons:
 			self.view.remove_subview(button)
 			del(button)
+		gc.collect()
 
-	def refresh_home_view_views(self):
-		self.delete_home_view_views()
-		self.place_home_view_views()
+	def refresh_home_view_links(self):
+		self.delete_home_view_links()
+		self.place_home_view_links()
 
-	def finishSetup(self):
+	def finish_setup(self):
 		#view options
-		self.chosenViewOptions = []
-		self.availableViewOptions = []
+		self.chosen_view_options = []
+		self.available_view_options = []
 		
 		#option 1
-		self.availableViewOptions.append(SettingOption("title", "s", [], self.mainView, self))
+		self.available_view_options.append(Setting_Option("title", "s", [], self.main_view, self))
 		
 		#option 2
-		self.availableViewOptions.append(SettingOption("completable", "b", [], self.mainView, self))
+		self.available_view_options.append(Setting_Option("completable", "b", [], self.main_view, self))
 	
-		self.customViewOptionsView = ui.View(background_color = "f0fff5")
-		self.customViewOptionsConfirmButton = createCreateButton(self, "create", "v")
+		#create the view options view
+		self.custom_view_options_view = ui.View(background_color = "f0fff5")
+
+		#create create button and trash button
+		self.custom_view_options_create_button = create_create_button(self, "create", "v")
+		self.custom_view_options_trash_button = create_options_trash_button("v", self)
 		
-		self.customViewOptionsTrashButton = createOptionsTrashButton("v", self)
+		#buttons for view deletion sequence
+		self.custom_view_options_confirm_delete_label = ui.Label(text="delete view?", center=(80,670))
+		self.custom_view_options_confirm_delete_button = ui.Button(title="yes", border_color="black", border_width=1, background_color="white", action=self.confirmDelete, center=(45, 700))
+		self.custom_view_options_decline_delete_button = ui.Button(title="no", border_color="black", border_width=1, background_color="white", action=self.declineDelete, center=(80, 700))
 		
-		self.customViewOptionsConfirmDeleteLabel = ui.Label(text="delete view?", center=(80,670))
-		
-		self.customViewOptionsConfirmDeleteButton = ui.Button(title="yes", border_color="black", border_width=1, background_color="white", action=self.confirmDelete, center=(45, 700))
-		
-		self.customViewOptionsDeclineDeleteButton = ui.Button(title="no", border_color="black", border_width=1, background_color="white", action=self.declineDelete, center=(80, 700))
-		
-		self.putOptionsOnView(self.customViewOptionsView, self.availableViewOptions, self.chosenViewOptions)
+		#put options on view
+		self.put_options_on_view(self.custom_view_options_view, self.available_view_options, self.chosen_view_options)
 
 		
 		#task options
-		self.chosenTaskOptions = []
-		self.availableTaskOptions = []
+		self.chosen_task_options = []
+		self.available_task_options = []
 		
 		#taskOption 1
-		self.availableTaskOptions.append(SettingOption("name", "s", None, self.mainView, self))
+		self.available_task_options.append(Setting_Option("name", "s", None, self.main_view, self))
 		
 		#TaskOption 2
-		self.availableTaskOptions.append(SettingOption("action", "c", ["view", "note", "distribute"], self.mainView, self))
+		self.available_task_options.append(Setting_Option("action", "c", ["view", "note", "distribute"], self.main_view, self))
 		
-		self.customTaskOptionsView = ui.View(background_color = "f0fff5")
+		#create task options view
+		self.custom_task_options_view = ui.View(background_color = "f0fff5")
 		
-		self.customTaskOptionsConfirmButton = createCreateButton(self, "create", "t")
+		self.custom_task_options_confirm_button = create_create_button(self, "create", "t")
 		
-		self.putOptionsOnView(self.customTaskOptionsView, self.availableTaskOptions, self.chosenTaskOptions)
+		self.put_options_on_view(self.custom_task_options_view, self.available_task_options, self.chosen_task_options)
 		
 		
-	def putOptionsOnView(self, view, availableOptions, chosenOptions):
+	def put_options_on_view(self, view, available_options, chosen_options):
 		x = 0
-		for option in availableOptions:
+		for option in available_options:
 			label = ui.Label(text = option.name, center = (100, 75 + 45*int(x)))
 			
 			view.add_subview(label)
@@ -191,14 +201,14 @@ class MoreViews:
 				view.add_subview(button)
 				button.title = "no"
 				button.background_color = "red"
-				chosenOptions.append(button)
+				chosen_options.append(button)
 			#needs string value
 			elif option.type == "s":
-				textField = ui.TextField(frame = (200, 60 + 45*int(x), 150, 35))
-				textField.name = "s" + str(x)
-				textField.text = ""
-				view.add_subview(textField)
-				chosenOptions.append(textField)
+				text_field = ui.TextField(frame = (200, 60 + 45*int(x), 150, 35))
+				text_field.name = "s" + str(x)
+				text_field.text = ""
+				view.add_subview(text_field)
+				chosen_options.append(text_field)
 			elif option.type == "c":
 				button = ui.Button(title = "XXXXXXXXX")
 				button.center = (250, 80 + 45*int(x))
@@ -207,72 +217,113 @@ class MoreViews:
 				button.background_color = "white"
 				view.add_subview(button)
 				button.title = option.choices[0]
-				option.addHelperButton(0)
-				chosenOptions.append(button)
+				option.add_helper_button(0)
+				chosen_options.append(button)
 			x+=1
 		
-	def showView(self, sender):
-		#this edit mode is for editing the home view
-		if self.editMode:
-			self.moreEditMode(self.editButton)
-		self.mainView.nav.push_view(self.view)
+	def show_home_view(self, sender):
+		self.main_view.nav.push_view(self.view)
 		
-	def chooseViewLink(self, sender):
-		self.curView.buttonNeedingLink = sender
-		self.mainView.nav.push_view(self.view)
+	#called from the task options view, button needing link is the helper button to the link option
+	def choose_view_link(self, sender):
+		#make home view ready for select mode
+		self.select_mode = True
+		
+		#pop task options view and custom view view
+		self.main_view.nav.pop_view()
+		self.main_view.nav.pop_view()
+
 			
-	def openCustomViewFromHome(self, sender):
-		if self.editMode:
-			self.curView = self.getView(sender.name)
-			self.curView.button = sender
-			self.openCustomViewOptions("edit")
+	def open_custom_view(self, serial_num):
+		#clear the old view
+		self.clear_custom_view_view()
+		#open the new view
+		if self.select_mode:
+			self.cur_view_select = self.get_a_view(serial_num)
+			self.view_path_select.insert(0, serial_num)
 		else:
-			self.openCustomView(sender.name)
-			
-	def openCustomView(self, serialNum):
-		if self.selectMode:
-			#link selected view to view that opened select view
-			self.home_view.allViews[serialNum].link_count += 1
-			self.home_view.curView.linkView(serialNum)
-			
-			self.view.close()
+			self.cur_view = self.get_a_view(serial_num)
+			self.view_path.insert(0, serial_num)
+
+		#put tasks on view
+		self.populate_custom_view_view()
+
+
+	def close_custom_view(self):
+		#pop view to close
+		if self.select_mode:
+			self.view_path_select.pop(0)
 		else:
-			self.curView = self.getView(serialNum)
-			self.mainView.nav.push_view(self.curView.view)
+			self.view_path.pop(0)
+
+		self.clear_custom_view_view()
+
+		#get the next view
+		if self.select_mode:
+			if len(self.view_path_select) > 0:
+				self.cur_view_select = self.get_a_view(self.view_path_select[0])
+		else:
+			if len(self.view_path) > 0:
+				self.cur_view = self.get_a_view(self.view_path[0])
+
+		self.populate_custom_view_view()
+
+
+	def populate_custom_view_view(self):
+		if self.select_mode:
+			if self.cur_view_select != None:
+				for button in self.cur_view_select.task_buttons:
+					self.custom_view_view_select.add_subview(button)
+				self.custom_view_view_title_select.title = self.cur_view_select.name
+		else:
+			if self.cur_view != None:
+				for button in self.cur_view.task_buttons:
+					self.custom_view_view.add_subview(button)
+				self.custom_view_view_title.title = self.cur_view.name
+
+
+	def clear_custom_view_view(self):
+		if self.select_mode:
+			if self.cur_view_select != None:
+				for button in self.cur_view_select.task_buttons:
+					self.custom_view_view_select.remove_subview(button)
+		else:
+			if self.cur_view != None:
+				for button in self.cur_view.task_buttons:
+					self.custom_view_view.remove_subview(button)
+
 	
 	#gets a view if it is already open, else open a view
-	def getView(self, serialNum):
-		if serialNum == None:
-			return None
-		
+	def get_a_view(self, serial_num):
 		#i might add some sort of reference counter thing to close ones we dont want after a while to increase efficiency
-		if serialNum not in self.openViews:
-			self.openViews[serialNum] = CustomView(serialNum, self, self.mainView)
+		if serial_num not in self.open_views:
+			self.open_views[serial_num] = Custom_View(serial_num, self, self.main_view)
 			
-		return self.openViews[serialNum]
+		return self.open_views[serial_num]
+
 		
-	def openCustomViewOptions(self, mode):
-		editMode = False
+	def open_custom_view_options(self, mode):
+		edit_mode = False
 		if mode == "edit":
-			editMode = True
+			edit_mode = True
 		x = 0
-		for option in self.availableViewOptions:
+		for option in self.available_view_options:
 			if option.type == "b":
-				if not editMode or self.curView.options[x] == False:
-					self.chosenViewOptions[x].title = "no"
-					self.chosenViewOptions[x].background_color = "red"
-				elif self.curView.options[x] == True:
-					self.chosenViewOptions[x].title = "yes"
-					self.chosenViewOptions[x].background_color = "2ce56d"
+				if not edit_mode or self.cur_view.options[x] == False:
+					self.chosen_view_options[x].title = "no"
+					self.chosen_view_options[x].background_color = "red"
+				elif self.cur_view.options[x] == True:
+					self.chosen_view_options[x].title = "yes"
+					self.chosen_view_options[x].background_color = "2ce56d"
 			elif option.type == "s":
-				if editMode:
-					self.chosenViewOptions[x].text = self.curView.options[x]
+				if edit_mode:
+					self.chosen_view_options[x].text = self.cur_view.options[x]
 				else:
-					self.chosenViewOptions[x].text = ""
+					self.chosen_view_options[x].text = ""
 			x+=1
-		if editMode:
-			self.customViewOptionsConfirmButton.title = "save"
-			self.customViewOptionsConfirmButton.center = (300, 700)
+		if edit_mode:
+			self.custom_view_options_confirm_button.title = "save"
+			self.custom_view_options_confirm_button.center = (300, 700)
 			self.customViewOptionsView.add_subview(self.customViewOptionsTrashButton)
 			self.customViewOptionsView.remove_subview(self.customViewOptionsConfirmDeleteButton)
 			
@@ -322,13 +373,13 @@ class MoreViews:
 		#extract option data from chosen options
 		for x in self.chosenViewOptions:
 			index = int(x.name[1])
-			type = x.name[0]
-			if type == "b":
+			kind = x.name[0]
+			if kind == "b":
 				if x.title == "yes":
 					options[index] = True
 				elif x.title == "no":
 					options[index] = False
-			elif type == "s":
+			elif kind == "s":
 				options[index] = self.chosenViewOptions[index].text
 
 		#create mode
@@ -439,7 +490,7 @@ class CustomView:
 			del self.view
 			gc.collect()
 		
-		self.view = ui.View(background_color = "f0fff5")
+		
 		self.addTaskButton = createAddTaskButton(self, "customTask")
 		self.editButton = createEditButton(self, "c")
 		
